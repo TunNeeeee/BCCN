@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Thủ Tục & Báo Cáo Cá Nhân</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (XLSX) for Real Excel Import Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2 rounded-lg flex items-center justify-center font-bold text-lg shadow-sm">
+                    <i class="fa-solid fa-file-contract"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base md:text-lg leading-tight tracking-wide">QUẢN LÝ THỦ TỤC & BÁO CÁO</h1>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Hệ thống luân chuyển & kiểm soát hồ sơ căn hộ</p>
+                </div>
+            </div>
+
+            <!-- Role Switcher & User Profile -->
+            <div class="flex items-center space-x-4">
+                <!-- Role Switcher -->
+                <div class="flex items-center space-x-2 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+                    <span class="text-xs text-slate-400 hidden md:inline font-medium pl-1">
+                        <i class="fa-solid fa-user-gear mr-1"></i>Vai trò:
+                    </span>
+                    <select id="roleSelector" onchange="changeRole(this.value)" class="bg-slate-900 text-white text-xs rounded md:px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold cursor-pointer border border-slate-700">
+                        <option value="Chuyên viên Thủ tục">Chuyên viên Thủ tục (Thu xinh)</option>
+                        <option value="Kiểm soát">Chuyên viên Kiểm soát (Trang)</option>
+                        <option value="Giám đốc">Giám đốc (Sếp Quản lý)</option>
+                        <option value="Admin">Admin (Quản trị hệ thống)</option>
+                    </select>
+                </div>
+
+                <!-- Notifications dropdown trigger -->
+                <div class="relative">
+                    <button onclick="toggleNotifications()" class="relative p-2 text-slate-300 hover:text-white focus:outline-none rounded-full hover:bg-slate-800 transition">
+                        <i class="fa-regular fa-bell text-lg"></i>
+                        <span id="notifBadge" class="absolute top-1 right-1 bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">2</span>
+                    </button>
+                    <!-- Notification Panel -->
+                    <div id="notifPanel" class="hidden absolute right-0 mt-2 w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden text-xs">
+                        <div class="p-3 bg-slate-100 border-b border-slate-200 font-bold flex justify-between items-center">
+                            <span>Thông báo hệ thống</span>
+                            <button onclick="markAllNotificationsRead()" class="text-blue-600 hover:underline text-[11px]">Đánh dấu đã đọc</button>
+                        </div>
+                        <div id="notifList" class="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                            <!-- Dynamic Notifications -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current User Avatar -->
+                <div class="flex items-center space-x-2 border-l border-slate-700 pl-4">
+                    <div id="userAvatar" class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shadow-inner">
+                        TX
+                    </div>
+                    <div class="hidden sm:block text-left text-xs">
+                        <div id="userNameDisplay" class="font-semibold text-slate-100">Thu xinh</div>
+                        <div id="userRoleDisplay" class="text-[10px] text-slate-400">Chuyên viên Thủ tục</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- LIVE NOTIFICATION TOAST -->
+    <div id="liveAlert" class="fixed top-20 right-4 z-50 transform translate-x-full transition-transform duration-300 ease-in-out max-w-sm bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-l-4 border-blue-500 flex items-start space-x-3 text-xs">
+        <i class="fa-solid fa-circle-info text-blue-400 text-base mt-0.5"></i>
+        <div class="flex-1" id="liveAlertMessage">Cảnh báo hệ thống</div>
+        <button onclick="closeLiveAlert()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- MAIN NAVIGATION TABS -->
+    <nav class="bg-white border-b border-slate-200 sticky top-16 z-20 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-6 overflow-x-auto custom-scrollbar text-sm font-medium">
+            <button id="tabNav1" onclick="switchMainTab('tab1')" class="py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2">
+                <i class="fa-solid fa-folder-open"></i><span>Báo Cáo Cá Nhân / Hồ Sơ</span>
+            </button>
+            <button id="tabNav2" onclick="switchMainTab('tab2')" class="py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-building-user"></i><span>Thủ Tục Phòng Ban & Báo Cáo</span>
+            </button>
+            <button id="tabNav3" onclick="switchMainTab('tab3')" class="py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-magnifying-glass-location"></i><span>Tra Cứu Lịch Sử Theo Mã Căn</span>
+            </button>
+            <button id="tabNav4" onclick="switchMainTab('tab4')" class="py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-sliders"></i><span>Quản Trị & Cấu Hình</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- CONTENT BODY -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: BÁO CÁO CÁ NHÂN / DANH SÁCH HỒ SƠ -->
+        <section id="tab1Content" class="space-y-6">
+            
+            <!-- Context Header Banner -->
+            <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span class="bg-blue-500/30 text-blue-200 text-[11px] px-2 py-0.5 rounded-full font-semibold border border-blue-400/30">Phạm vi dữ liệu cá nhân</span>
+                        <span id="roleBadge" class="bg-emerald-500/30 text-emerald-200 text-[11px] px-2 py-0.5 rounded-full font-semibold border border-emerald-400/30">Chuyên viên Thủ tục</span>
+                    </div>
+                    <h2 class="text-xl font-bold tracking-tight">Danh Sách Hồ Sơ Cá Nhân</h2>
+                    <p class="text-xs text-slate-300 mt-1">Tự động lọc các hồ sơ gán cho tài khoản đang đăng nhập. Quản lý tiến độ, tạo mới và chuyển kiểm soát.</p>
+                </div>
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btnAddNew" onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl font-medium text-xs shadow-lg transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus"></i><span>Thêm Hồ Sơ</span>
+                    </button>
+                    <button id="btnImportExcel" onclick="openImportModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-600 px-3.5 py-2 rounded-xl font-medium text-xs shadow-sm transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-excel"></i><span>Import Excel</span>
+                    </button>
+                    <button id="btnForwardControl" onclick="batchTransferControl()" class="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded-xl font-medium text-xs shadow-lg transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-paper-plane"></i><span>Chuyển Kiểm Soát (<span id="selectedCount">0</span>)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STATUS FILTER TABS -->
+            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar">
+                    <button onclick="filterStatus('ALL')" id="stTabALL" class="st-tab font-semibold text-xs px-3.5 py-2 rounded-lg bg-slate-900 text-white transition">Tất cả (<span id="cntALL">0</span>)</button>
+                    <button onclick="filterStatus('Mới tạo')" id="stTabMới tạo" class="st-tab font-medium text-xs px-3.5 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition">Mới tạo (<span id="cntMới tạo">0</span>)</button>
+                    <button onclick="filterStatus('Chuyển Kiểm soát')" id="stTabChuyển Kiểm soát" class="st-tab font-medium text-xs px-3.5 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition">Chờ Kiểm Soát (<span id="cntChuyển Kiểm soát">0</span>)</button>
+                    <button onclick="filterStatus('Đã duyệt')" id="stTabĐã duyệt" class="st-tab font-medium text-xs px-3.5 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition">Đã duyệt (<span id="cntĐã duyệt">0</span>)</button>
+                    <button onclick="filterStatus('Trả thủ tục')" id="stTabTrả thủ tục" class="st-tab font-medium text-xs px-3.5 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition">Trả thủ tục (<span id="cntTrả thủ tục">0</span>)</button>
+                </div>
+
+                <!-- Quick Search -->
+                <div class="relative w-64 hidden sm:block">
+                    <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Tìm Mã căn, Khách hàng..." class="w-full bg-white text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- PROCEDURE CATEGORY QUICK FILTERS -->
+            <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-xs">
+                <span class="text-slate-500 font-medium px-2"><i class="fa-solid fa-filter mr-1"></i>Loại thủ tục:</span>
+                <button onclick="filterProcedureType('ALL')" id="procALL" class="proc-btn px-2.5 py-1 rounded-md font-medium bg-white text-blue-600 shadow-sm">Tất cả</button>
+                <button onclick="filterProcedureType('TTĐC')" id="procTTĐC" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">TTĐC (Đặt cọc)</button>
+                <button onclick="filterProcedureType('TTKQ')" id="procTTKQ" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">TTKQ (Ký quỹ)</button>
+                <button onclick="filterProcedureType('CN cọc')" id="procCN cọc" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">CN cọc</button>
+                <button onclick="filterProcedureType('TL cọc')" id="procTL cọc" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">TL cọc</button>
+                <button onclick="filterProcedureType('HĐMB')" id="procHĐMB" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">HĐMB</button>
+            </div>
+
+            <!-- DATA TABLE -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 w-8 text-center"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" class="rounded text-blue-600"></th>
+                                <th class="p-3 w-10 text-center">STT</th>
+                                <th class="p-3 font-bold text-slate-900">Mã căn</th>
+                                <th class="p-3">Tên khách hàng</th>
+                                <th class="p-3">Loại thủ tục</th>
+                                <th class="p-3">NV Thủ tục</th>
+                                <th class="p-3">Ngày TH</th>
+                                <th class="p-3">Trạng thái</th>
+                                <th class="p-3">NV Kiểm soát</th>
+                                <th class="p-3">Ngày Duyệt</th>
+                                <th class="p-3">Yêu cầu bổ sung/Sửa đổi</th>
+                                <th class="p-3 text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="personalRecordsTable" class="divide-y divide-slate-200">
+                            <!-- Rows populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Footer Info -->
+                <div class="p-3 bg-slate-50 border-t border-slate-200 text-slate-500 text-xs flex justify-between items-center">
+                    <div>Hiển thị <span id="displayedRecordCount" class="font-bold text-slate-800">0</span> / <span id="totalRecordCount">0</span> hồ sơ</div>
+                    <div class="text-[11px] text-slate-400">* Hệ thống hỗ trợ đọc trực tiếp file Excel (.xlsx, .xls) khi Import.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: THỦ TỤC PHÒNG BAN & BÁO CÁO -->
+        <section id="tab2Content" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-blue-600"></i> Tra Cứu & Báo Cáo Thống Kê Toàn Phòng Ban
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">Kiểm soát viên và Giám đốc tổng hợp số lượng hồ sơ theo từng nhân viên và loại thủ tục.</p>
+                    </div>
+                    <button onclick="generateReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center space-x-1.5 self-start">
+                        <i class="fa-solid fa-arrows-rotate"></i><span>TẠO BÁO CÁO MỚI</span>
+                    </button>
+                </div>
+
+                <!-- Report Visual Results -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <!-- Chart -->
+                    <div class="bg-white p-4 border border-slate-200 rounded-xl shadow-sm">
+                        <h3 class="text-xs font-bold text-slate-800 uppercase mb-3">Biểu Đồ Hồ Sơ Theo Loại Thủ Tục</h3>
+                        <div class="h-64">
+                            <canvas id="reportChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Aggregated Table -->
+                    <div class="bg-white p-4 border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-800 uppercase mb-3">Bảng Tổng Hợp Số Lượng Hồ Sơ</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-left border-collapse">
+                                    <thead class="bg-slate-100 border-b border-slate-200 font-semibold text-slate-700">
+                                        <tr>
+                                            <th class="p-2">Nhân viên</th>
+                                            <th class="p-2">Loại thủ tục</th>
+                                            <th class="p-2 text-center">Số lượng</th>
+                                            <th class="p-2 text-center">Đã duyệt</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reportTableBody" class="divide-y divide-slate-100">
+                                        <!-- Report Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-100 text-right">
+                            <button onclick="exportReportExcel()" class="text-xs text-emerald-700 font-semibold hover:underline">
+                                <i class="fa-solid fa-file-excel mr-1"></i>Xuất Excel Báo Cáo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: TRA CỨU LỊCH SỬ THEO MÃ CĂN -->
+        <section id="tab3Content" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-base font-bold text-slate-900 mb-1"><i class="fa-solid fa-clock-rotate-left text-blue-600 mr-2"></i>Tra Cứu Lịch Sử Thủ Tục Theo Mã Căn</h2>
+                <p class="text-xs text-slate-500 mb-4">Kiểm tra trình tự thủ tục đã thực hiện của bất kỳ mã căn hộ nào trong cơ sở dữ liệu chung.</p>
+
+                <div class="flex items-center space-x-3 max-w-md">
+                    <input type="text" id="lookupUnitCode" placeholder="Nhập Mã căn (VD: A1.02.03, B2-1208)" class="flex-1 text-xs p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-slate-800">
+                    <button onclick="executeLookup()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2.5 rounded-lg font-semibold shadow-sm">
+                        Tra Cứu
+                    </button>
+                </div>
+
+                <!-- History Timeline Results -->
+                <div id="lookupResults" class="mt-6 hidden">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-slate-500">Thông tin căn hộ:</span>
+                            <span id="lkUnitDisplay" class="font-bold text-slate-900 ml-2 text-sm"></span>
+                        </div>
+                        <span id="lkStatusBadge" class="px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full font-bold text-xs">Dữ liệu sẵn sàng</span>
+                    </div>
+
+                    <div class="border-l-2 border-blue-500 ml-4 pl-6 space-y-6 my-6" id="timelineContainer">
+                        <!-- Timeline Items populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: QUẢN TRỊ VÀ CẤU HÌNH -->
+        <section id="tab4Content" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-sliders text-blue-600 mr-2"></i>Thiết Lập Cấu Hình Hệ Thống & Trình Tự Nghiệp Vụ</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="p-4 border border-slate-200 rounded-xl bg-slate-50">
+                        <h3 class="text-xs font-bold uppercase text-slate-800 mb-3"><i class="fa-solid fa-sitemap text-blue-500 mr-1"></i>Cấu Hình Bậc Thủ Tục Nghiệp Vụ</h3>
+                        <ul class="text-xs space-y-2 text-slate-700">
+                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Bậc 1:</strong> TTĐC (Thỏa thuận đặt cọc), TTKQ (Thỏa thuận ký quỹ)</li>
+                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Bậc 2 (Cọc):</strong> CN cọc (Chuyển nhượng cọc), TL cọc (Thanh lý cọc)</li>
+                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Bậc 3:</strong> HĐMB (Hợp đồng mua bán)</li>
+                        </ul>
+                    </div>
+
+                    <div class="p-4 border border-slate-200 rounded-xl bg-slate-50">
+                        <h3 class="text-xs font-bold uppercase text-slate-800 mb-3"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>Quy Tắc Cảnh Báo Căn A1/A2</h3>
+                        <div class="text-xs text-slate-600 space-y-2">
+                            <p>Hệ thống tự động phát hiện khi chọn loại thủ tục <strong>Ký quỹ (TTKQ)</strong> đối với các căn thuộc tòa <strong>A1</strong> hoặc <strong>A2</strong>.</p>
+                            <div class="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg font-semibold">
+                                "A1/A2 ký quỹ người nước ngoài, bạn đã chắc chắn chưa?"
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: THÊM MỚI HỒ SƠ THỦ TỤC -->
+    <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-folder-plus text-blue-400"></i>
+                    <span>TẠO MỚI HỒ SƠ THỦ TỤC</span>
+                </h3>
+                <button onclick="closeAddModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-4 custom-scrollbar text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Mã căn <span class="text-rose-500">*</span></label>
+                    <input type="text" id="addUnitCode" placeholder="Nhập mã căn (Ví dụ: A1-0502, B2-1208)" class="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-slate-800 focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Tên khách hàng <span class="text-rose-500">*</span></label>
+                    <input type="text" id="addCustomerName" placeholder="Nhập họ và tên khách hàng" class="w-full border border-slate-300 rounded-lg p-2.5 font-semibold text-slate-800">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Loại thủ tục <span class="text-rose-500">*</span></label>
+                    <select id="addProcedureType" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 font-medium">
+                        <option value="TTĐC">TTĐC - Thỏa thuận đặt cọc</option>
+                        <option value="TTKQ">TTKQ - Thỏa thuận ký quỹ</option>
+                        <option value="CN cọc">CN cọc - Chuyển nhượng cọc</option>
+                        <option value="TL cọc">TL cọc - Thanh lý cọc</option>
+                        <option value="HĐMB">HĐMB - Hợp đồng mua bán</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Tên Nhân viên Thủ tục</label>
+                    <input type="text" id="addStaffName" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-100 font-semibold text-slate-700" readonly>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Ngày thực hiện <span class="text-rose-500">*</span></label>
+                    <input type="date" id="addExecDate" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="closeAddModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 font-medium text-xs">Hủy</button>
+                <button id="btnCreateRecord" onclick="saveNewRecord()" class="px-5 py-2 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 transition">
+                    TẠO HỒ SƠ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: EDIT RECORD -->
+    <div id="editModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-100 flex flex-col">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+                    <span>CHỈNH SỬA HỒ SƠ THỦ TỤC</span>
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4 text-xs">
+                <input type="hidden" id="editRecordId">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-500 mb-1">Mã căn</label>
+                        <input type="text" id="editUnitCode" class="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-slate-800">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-500 mb-1">Tên khách hàng</label>
+                        <input type="text" id="editCustomerName" class="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-slate-800">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Loại thủ tục</label>
+                    <select id="editProcedureType" class="w-full border border-slate-300 rounded-lg p-2.5">
+                        <option value="TTĐC">TTĐC - Thỏa thuận đặt cọc</option>
+                        <option value="TTKQ">TTKQ - Thỏa thuận ký quỹ</option>
+                        <option value="CN cọc">CN cọc - Chuyển nhượng cọc</option>
+                        <option value="TL cọc">TL cọc - Thanh lý cọc</option>
+                        <option value="HĐMB">HĐMB - Hợp đồng mua bán</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Ngày thực hiện</label>
+                    <input type="date" id="editExecDate" class="w-full border border-slate-300 rounded-lg p-2.5">
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="closeEditModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium">Hủy</button>
+                <button onclick="saveEditedRecord()" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold">LƯU CẬP NHẬT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CONTROL FORWARD -->
+    <div id="controlForwardModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div class="px-6 py-4 bg-amber-600 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>CHUYỂN HỒ SƠ SANG KIỂM SOÁT</span>
+                </h3>
+                <button onclick="closeControlModal()" class="text-amber-200 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4 text-xs">
+                <p class="text-slate-600">Bạn đã chọn <strong id="modalSelectedCount" class="text-amber-700">0</strong> hồ sơ để chuyển giao cho Chuyên viên Kiểm soát.</p>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Chọn Chuyên viên Kiểm soát tiếp nhận <span class="text-rose-500">*</span></label>
+                    <select id="controlStaffSelect" class="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-slate-800">
+                        <option value="Trang">Trang (Chuyên viên Kiểm soát)</option>
+                        <option value="Minh">Minh (Chuyên viên Kiểm soát)</option>
+                        <option value="Tuấn">Tuấn (Trưởng nhóm Kiểm soát)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="closeControlModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium">Hủy</button>
+                <button onclick="confirmForwardToControl()" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold">XÁC NHẬN CHUYỂN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: REVIEW APPROVAL -->
+    <div id="reviewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-clipboard-check text-blue-400"></i>
+                    <span>KIỂM SOÁT & PHÊ DUYỆT HỒ SƠ</span>
+                </h3>
+                <button onclick="closeReviewModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4 text-xs">
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 space-y-1">
+                    <div>Mã căn: <strong id="revUnitCode" class="text-slate-900"></strong></div>
+                    <div>Tên khách hàng: <strong id="revCustomerName"></strong></div>
+                    <div>Loại thủ tục: <strong id="revProcedureType" class="text-blue-700"></strong></div>
+                    <div>Chuyên viên thực hiện: <strong id="revStaffName"></strong></div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Yêu cầu Bổ sung / Sửa đổi (Nếu Trả hồ sơ)</label>
+                    <textarea id="revFeedback" rows="3" placeholder="Nhập chi tiết nội dung cần bổ sung hoặc lý do trả về..." class="w-full border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-rose-500"></textarea>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                <button onclick="processRejectRecord()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs flex items-center space-x-1">
+                    <i class="fa-solid fa-rotate-left"></i><span>TRẢ HỒ SƠ</span>
+                </button>
+                <div class="flex space-x-2">
+                    <button onclick="closeReviewModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium text-xs">Đóng</button>
+                    <button onclick="processApproveRecord()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center space-x-1">
+                        <i class="fa-solid fa-check"></i><span>DUYỆT HỒ SƠ</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: IMPORT EXCEL REAL IMPLEMENTATION -->
+    <div id="importModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                    <span>IMPORT HỒ SƠ HÀNG LOẠT TỪ FILE EXCEL</span>
+                </h3>
+                <button onclick="closeImportModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4 text-xs overflow-y-auto custom-scrollbar flex-1">
+                <div class="p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-info text-blue-600 text-base"></i>
+                        <span>Chức năng sẽ tự động đọc các cột: STT, MÃ CĂN, TÊN KH, LOẠI TT, NV THỦ TỤC, NGÀY TH, TRẠNG THÁI, NV KIỂM SOÁT, NGÀY DUYỆT.</span>
+                    </div>
+                </div>
+
+                <!-- DROPZONE INTERACTIVE FILE INPUT -->
+                <div id="dropZone" onclick="triggerFileInput()" class="border-2 border-dashed border-emerald-400 bg-emerald-50/40 rounded-2xl p-8 text-center hover:bg-emerald-100/50 transition cursor-pointer relative group">
+                    <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileUpload(event)">
+                    <div class="pointer-events-none">
+                        <i class="fa-solid fa-file-excel text-4xl text-emerald-600 mb-3 group-hover:scale-110 transition-transform"></i>
+                        <p class="font-bold text-slate-800 text-sm">Bấm vào đây để chọn file Excel từ máy tính</p>
+                        <p class="text-slate-500 text-xs mt-1">hoặc kéo thả file Excel (.xlsx, .xls) vào khu vực này</p>
+                        <div id="selectedFileName" class="mt-3 inline-block px-3 py-1 bg-white border border-emerald-300 text-emerald-800 font-semibold rounded-lg shadow-sm hidden">
+                            <!-- Selected file name display -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PREVIEW PARSED DATA TABLE -->
+                <div id="importCheckResult" class="hidden space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-emerald-600"></i>
+                            <span>Xem trước dữ liệu đọc được (<span id="parsedRowCount" class="text-emerald-700">0</span> dòng)</span>
+                        </div>
+                    </div>
+
+                    <div class="max-h-56 overflow-auto border border-slate-200 rounded-xl custom-scrollbar shadow-inner bg-slate-50">
+                        <table class="w-full text-left text-[11px] border-collapse">
+                            <thead class="bg-slate-200 text-slate-700 sticky top-0 font-semibold">
+                                <tr>
+                                    <th class="p-2 border-b">STT</th>
+                                    <th class="p-2 border-b">MÃ CĂN</th>
+                                    <th class="p-2 border-b">TÊN KH</th>
+                                    <th class="p-2 border-b">LOẠI TT</th>
+                                    <th class="p-2 border-b">NV THỦ TỤC</th>
+                                    <th class="p-2 border-b">NGÀY TH</th>
+                                    <th class="p-2 border-b">TRẠNG THÁI</th>
+                                    <th class="p-2 border-b">NV KIỂM SOÁT</th>
+                                    <th class="p-2 border-b">NGÀY DUYỆT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="excelPreviewBody" class="divide-y divide-slate-200 bg-white">
+                                <!-- Parsed rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="closeImportModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium text-xs">Hủy</button>
+                <button onclick="executeImportData()" id="btnExecuteImport" disabled class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs disabled:opacity-50 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-file-import"></i><span>IMPORT NGAY</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DATA & CORE LOGIC -->
+    <script>
+        // MASTER STATE
+        let currentUserRole = 'Chuyên viên Thủ tục';
+        let currentUserName = 'Thu xinh';
+
+        // Parsed Excel Rows Cache
+        let parsedExcelRecords = [];
+
+        // Initial Sample Records Data
+        let procedureRecords = [
+            {
+                id: 'REC001',
+                unitCode: 'A1-0502',
+                customerName: 'Nguyễn Văn Hùng',
+                procedureType: 'TTĐC',
+                staffName: 'Thu xinh',
+                execDate: '2026-10-20',
+                status: 'Đã duyệt',
+                controlStaff: 'Trang',
+                controlApproveDate: '2026-10-21',
+                requirements: ''
+            },
+            {
+                id: 'REC002',
+                unitCode: 'B2-1208',
+                customerName: 'Trần Thị Mai',
+                procedureType: 'HĐMB',
+                staffName: 'Thu xinh',
+                execDate: '2026-10-22',
+                status: 'Chuyển Kiểm soát',
+                controlStaff: 'Trang',
+                controlApproveDate: '',
+                requirements: ''
+            },
+            {
+                id: 'REC003',
+                unitCode: 'C1-0805',
+                customerName: 'Lê Hoàng Nam',
+                procedureType: 'TTKQ',
+                staffName: 'Thu xinh',
+                execDate: '2026-10-25',
+                status: 'Trả thủ tục',
+                controlStaff: 'Trang',
+                controlApproveDate: '',
+                requirements: 'Cần bổ sung CCCD sao y bản chính'
+            }
+        ];
+
+        // System Notifications
+        let notifications = [
+            { id: 1, title: 'Hồ sơ bị trả về', content: 'Căn C1-0805 (TTKQ) bị trả về. Lý do: Thiếu bản sao CCCD.', time: '10 phút trước', read: false },
+            { id: 2, title: 'Thông báo hệ thống', content: 'Tính năng Import file Excel thật (.xlsx) đã sẵn sàng.', time: 'Vừa xong', read: false }
+        ];
+
+        let selectedRecordIds = [];
+        let currentStatusFilter = 'ALL';
+        let currentProcFilter = 'ALL';
+        let activeReviewingRecordId = null;
+        let reportChartInstance = null;
+
+        // INITIALIZATION
+        window.onload = function() {
+            renderTable();
+            renderNotifications();
+            initReportChart();
+            setupDropZoneEvents();
+        }
+
+        // NAVIGATION TAB SWITCHING
+        function switchMainTab(tabId) {
+            ['tab1Content', 'tab2Content', 'tab3Content', 'tab4Content'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            ['tabNav1', 'tabNav2', 'tabNav3', 'tabNav4'].forEach(id => {
+                document.getElementById(id).className = 'py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2';
+            });
+
+            if (tabId === 'tab1') {
+                document.getElementById('tab1Content').classList.remove('hidden');
+                document.getElementById('tabNav1').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+            } else if (tabId === 'tab2') {
+                document.getElementById('tab2Content').classList.remove('hidden');
+                document.getElementById('tabNav2').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+                generateReport();
+            } else if (tabId === 'tab3') {
+                document.getElementById('tab3Content').classList.remove('hidden');
+                document.getElementById('tabNav3').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+            } else if (tabId === 'tab4') {
+                document.getElementById('tab4Content').classList.remove('hidden');
+                document.getElementById('tabNav4').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+            }
+        }
+
+        // ROLE SWITCHING SIMULATION
+        function changeRole(role) {
+            currentUserRole = role;
+            if (role === 'Chuyên viên Thủ tục') currentUserName = 'Thu xinh';
+            else if (role === 'Kiểm soát') currentUserName = 'Trang';
+            else if (role === 'Giám đốc') currentUserName = 'Sếp Quản lý';
+            else if (role === 'Admin') currentUserName = 'Admin System';
+
+            document.getElementById('userNameDisplay').innerText = currentUserName;
+            document.getElementById('userRoleDisplay').innerText = role;
+            document.getElementById('roleBadge').innerText = role;
+            document.getElementById('userAvatar').innerText = currentUserName.substring(0,2).toUpperCase();
+
+            updateRoleUIControls();
+            renderTable();
+            showLiveAlert(`Đã chuyển sang vai trò: <strong>${role} (${currentUserName})</strong>`);
+        }
+
+        function updateRoleUIControls() {
+            const btnAddNew = document.getElementById('btnAddNew');
+            const btnImportExcel = document.getElementById('btnImportExcel');
+            const btnForwardControl = document.getElementById('btnForwardControl');
+
+            if (currentUserRole === 'Chuyên viên Thủ tục' || currentUserRole === 'Admin') {
+                btnAddNew.classList.remove('hidden');
+                btnImportExcel.classList.remove('hidden');
+                btnForwardControl.classList.remove('hidden');
+            } else {
+                btnAddNew.classList.add('hidden');
+                btnImportExcel.classList.add('hidden');
+                btnForwardControl.classList.add('hidden');
+            }
+        }
+
+        // RENDER TABLE DATA
+        function renderTable() {
+            const tbody = document.getElementById('personalRecordsTable');
+            tbody.innerHTML = '';
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            let filtered = procedureRecords.filter(r => {
+                if (currentUserRole === 'Chuyên viên Thủ tục' && r.staffName !== currentUserName) {
+                    return false;
+                }
+                if (currentStatusFilter !== 'ALL' && r.status !== currentStatusFilter) {
+                    return false;
+                }
+                if (currentProcFilter !== 'ALL' && r.procedureType !== currentProcFilter) {
+                    return false;
+                }
+                if (searchTerm && !r.unitCode.toLowerCase().includes(searchTerm) && !r.customerName.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+                return true;
+            });
+
+            updateTabBadges();
+
+            document.getElementById('displayedRecordCount').innerText = filtered.length;
+            document.getElementById('totalRecordCount').innerText = procedureRecords.length;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-400 font-medium">Không tìm thấy hồ sơ thủ tục nào</td></tr>`;
+                return;
+            }
+
+            filtered.forEach((r, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition border-b border-slate-100";
+
+                let statusBadgeClass = "bg-slate-100 text-slate-700 border-slate-200";
+                if (r.status === 'Mới tạo') statusBadgeClass = "bg-blue-50 text-blue-700 border-blue-200";
+                else if (r.status === 'Chuyển Kiểm soát') statusBadgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+                else if (r.status === 'Đã duyệt') statusBadgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                else if (r.status === 'Trả thủ tục') statusBadgeClass = "bg-rose-50 text-rose-700 border-rose-200";
+
+                let actionHTML = '';
+                if (currentUserRole === 'Chuyên viên Thủ tục' || currentUserRole === 'Admin') {
+                    if (r.status === 'Mới tạo' || r.status === 'Trả thủ tục') {
+                        actionHTML += `<button onclick="openEditModal('${r.id}')" class="text-blue-600 hover:text-blue-800 font-semibold mr-2"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>`;
+                    } else {
+                        actionHTML += `<span class="text-slate-400 text-[11px]"><i class="fa-solid fa-lock"></i> Khóa sửa</span>`;
+                    }
+                }
+
+                if (currentUserRole === 'Kiểm soát' || currentUserRole === 'Admin') {
+                    if (r.status === 'Chuyển Kiểm soát') {
+                        actionHTML += `<button onclick="openReviewModal('${r.id}')" class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded font-bold text-[11px] shadow-sm flex items-center space-x-1">
+                            <i class="fa-solid fa-clipboard-check"></i><span>Duyệt</span>
+                        </button>`;
+                    }
+                }
+
+                const isChecked = selectedRecordIds.includes(r.id) ? 'checked' : '';
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center"><input type="checkbox" onchange="toggleSelectRecord('${r.id}')" ${isChecked} class="rounded text-blue-600"></td>
+                    <td class="p-3 text-center font-medium text-slate-500">${idx + 1}</td>
+                    <td class="p-3 font-bold text-slate-900">${r.unitCode}</td>
+                    <td class="p-3 font-medium">${r.customerName}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 text-slate-800 rounded font-bold text-[11px]">${r.procedureType}</span></td>
+                    <td class="p-3 text-slate-700 font-medium">${r.staffName}</td>
+                    <td class="p-3 text-slate-600">${r.execDate || '-'}</td>
+                    <td class="p-3"><span class="px-2.5 py-1 rounded-full border font-semibold text-[11px] ${statusBadgeClass}">${r.status}</span></td>
+                    <td class="p-3 text-slate-700">${r.controlStaff || '-'}</td>
+                    <td class="p-3 text-slate-600">${r.controlApproveDate || '-'}</td>
+                    <td class="p-3 text-rose-600 font-medium max-w-xs truncate">${r.requirements || '-'}</td>
+                    <td class="p-3 text-center">${actionHTML}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // FILTER CONTROL HANDLERS
+        function filterStatus(st) {
+            currentStatusFilter = st;
+            document.querySelectorAll('.st-tab').forEach(btn => {
+                btn.className = "st-tab font-medium text-xs px-3.5 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition";
+            });
+            const activeBtn = document.getElementById(`stTab${st}`);
+            if (activeBtn) activeBtn.className = "st-tab font-semibold text-xs px-3.5 py-2 rounded-lg bg-slate-900 text-white transition";
+            renderTable();
+        }
+
+        function filterProcedureType(proc) {
+            currentProcFilter = proc;
+            document.querySelectorAll('.proc-btn').forEach(btn => {
+                btn.className = "proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white";
+            });
+            const activeBtn = document.getElementById(`proc${proc}`);
+            if (activeBtn) activeBtn.className = "proc-btn px-2.5 py-1 rounded-md font-medium bg-white text-blue-600 shadow-sm";
+            renderTable();
+        }
+
+        function updateTabBadges() {
+            const baseList = procedureRecords.filter(r => currentUserRole !== 'Chuyên viên Thủ tục' || r.staffName === currentUserName);
+            
+            document.getElementById('cntALL').innerText = baseList.length;
+            document.getElementById('cntMới tạo').innerText = baseList.filter(r => r.status === 'Mới tạo').length;
+            document.getElementById('cntChuyển Kiểm soát').innerText = baseList.filter(r => r.status === 'Chuyển Kiểm soát').length;
+            document.getElementById('cntĐã duyệt').innerText = baseList.filter(r => r.status === 'Đã duyệt').length;
+            document.getElementById('cntTrả thủ tục').innerText = baseList.filter(r => r.status === 'Trả thủ tục').length;
+        }
+
+        function toggleSelectRecord(id) {
+            if (selectedRecordIds.includes(id)) {
+                selectedRecordIds = selectedRecordIds.filter(i => i !== id);
+            } else {
+                selectedRecordIds.push(id);
+            }
+            document.getElementById('selectedCount').innerText = selectedRecordIds.length;
+        }
+
+        function toggleSelectAll(masterCb) {
+            if (masterCb.checked) {
+                selectedRecordIds = procedureRecords.map(r => r.id);
+            } else {
+                selectedRecordIds = [];
+            }
+            document.getElementById('selectedCount').innerText = selectedRecordIds.length;
+            renderTable();
+        }
+
+        // REAL EXCEL IMPORT IMPLEMENTATION (SheetJS / XLSX)
+        function openImportModal() {
+            document.getElementById('importModal').classList.remove('hidden');
+            resetImportModal();
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.add('hidden');
+            resetImportModal();
+        }
+
+        function resetImportModal() {
+            document.getElementById('excelFileInput').value = '';
+            document.getElementById('selectedFileName').classList.add('hidden');
+            document.getElementById('importCheckResult').classList.add('hidden');
+            document.getElementById('btnExecuteImport').disabled = true;
+            document.getElementById('excelPreviewBody').innerHTML = '';
+            parsedExcelRecords = [];
+        }
+
+        function triggerFileInput() {
+            document.getElementById('excelFileInput').click();
+        }
+
+        function setupDropZoneEvents() {
+            const dropZone = document.getElementById('dropZone');
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.add('bg-emerald-100', 'border-emerald-600');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove('bg-emerald-100', 'border-emerald-600');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    processExcelFile(files[0]);
+                }
+            }, false);
+        }
+
+        function handleExcelFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processExcelFile(file);
+            }
+        }
+
+        // PROCESS AND PARSE EXCEL FILE DATA
+        function processExcelFile(file) {
+            const fileNameDiv = document.getElementById('selectedFileName');
+            fileNameDiv.innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileNameDiv.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Get first worksheet
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Convert sheet to JSON rows
+                    const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (rawJson.length === 0) {
+                        alert("File Excel tải lên không chứa dữ liệu!");
+                        return;
+                    }
+
+                    // Map columns dynamically
+                    parsedExcelRecords = [];
+                    const previewBody = document.getElementById('excelPreviewBody');
+                    previewBody.innerHTML = '';
+
+                    rawJson.forEach((row, index) => {
+                        // Normalize key search
+                        const getVal = (keys) => {
+                            for (let k of keys) {
+                                for (let rawKey in row) {
+                                    if (rawKey.trim().toUpperCase() === k.toUpperCase()) {
+                                        return row[rawKey];
+                                    }
+                                }
+                            }
+                            return '';
+                        };
+
+                        const unitCode = getVal(['MÃ CĂN', 'MA CAN', 'MÃ CĂN HỘ', 'MÃ']);
+                        const customerName = getVal(['TÊN KH', 'TEN KH', 'TÊN KHÁCH HÀNG', 'KHÁCH HÀNG']);
+                        const procedureType = getVal(['LOẠI TT', 'LOAI TT', 'LOẠI THỦ TỤC']) || 'TTĐC';
+                        const staffName = getVal(['NV THỦ TỤC', 'NV THU TUC', 'NHÂN VIÊN THỦ TỤC']) || currentUserName;
+                        const execDate = getVal(['NGÀY TH', 'NGAY TH', 'NGÀY THỰC HIỆN']) || new Date().toISOString().split('T')[0];
+                        const status = getVal(['TRẠNG THÁI', 'TRANG THAI']) || 'Mới tạo';
+                        const controlStaff = getVal(['NV KIỂM SOÁT', 'NV KIEM SOAT', 'NGƯỜI KIỂM SOÁT']) || '';
+                        const controlApproveDate = getVal(['NGÀY DUYỆT', 'NGAY DUYET']) || '';
+
+                        if (unitCode || customerName) {
+                            const recObj = {
+                                id: 'REC_IMP_' + Date.now() + '_' + index,
+                                unitCode: String(unitCode || 'CĂN-MỚI').trim(),
+                                customerName: String(customerName || 'Khách hàng').trim(),
+                                procedureType: String(procedureType).trim(),
+                                staffName: String(staffName).trim(),
+                                execDate: String(execDate).trim(),
+                                status: String(status).trim() || 'Mới tạo',
+                                controlStaff: String(controlStaff).trim(),
+                                controlApproveDate: String(controlApproveDate).trim(),
+                                requirements: ''
+                            };
+
+                            parsedExcelRecords.push(recObj);
+
+                            // Append preview row
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td class="p-2 border-b">${index + 1}</td>
+                                <td class="p-2 border-b font-bold text-slate-800">${recObj.unitCode}</td>
+                                <td class="p-2 border-b">${recObj.customerName}</td>
+                                <td class="p-2 border-b"><span class="px-1.5 py-0.5 bg-slate-100 rounded font-semibold">${recObj.procedureType}</span></td>
+                                <td class="p-2 border-b">${recObj.staffName}</td>
+                                <td class="p-2 border-b">${recObj.execDate}</td>
+                                <td class="p-2 border-b">${recObj.status}</td>
+                                <td class="p-2 border-b">${recObj.controlStaff || '-'}</td>
+                                <td class="p-2 border-b">${recObj.controlApproveDate || '-'}</td>
+                            `;
+                            previewBody.appendChild(tr);
+                        }
+                    });
+
+                    document.getElementById('parsedRowCount').innerText = parsedExcelRecords.length;
+                    document.getElementById('importCheckResult').classList.remove('hidden');
+                    document.getElementById('btnExecuteImport').disabled = parsedExcelRecords.length === 0;
+
+                } catch (err) {
+                    console.error("Lỗi đọc file Excel:", err);
+                    alert("Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng file!");
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        // IMPORT EXECUTION
+        function executeImportData() {
+            if (parsedExcelRecords.length === 0) return;
+
+            // Add all parsed records to main table state
+            procedureRecords.unshift(...parsedExcelRecords);
+
+            showLiveAlert(`Đã import thành công <strong>${parsedExcelRecords.length}</strong> bản ghi từ file Excel!`);
+            closeImportModal();
+            renderTable();
+        }
+
+        // CREATE NEW RECORD HANDLER
+        function openAddModal() {
+            document.getElementById('addModal').classList.remove('hidden');
+            document.getElementById('addStaffName').value = currentUserName;
+            document.getElementById('addExecDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.add('hidden');
+        }
+
+        function saveNewRecord() {
+            const unitCode = document.getElementById('addUnitCode').value.trim();
+            const customerName = document.getElementById('addCustomerName').value.trim();
+            const procedureType = document.getElementById('addProcedureType').value;
+            const execDate = document.getElementById('addExecDate').value;
+
+            if (!unitCode || !customerName) {
+                alert("Vui lòng nhập Mã căn và Tên khách hàng!");
+                return;
+            }
+
+            const newRec = {
+                id: 'REC' + (procedureRecords.length + 1).toString().padStart(3, '0'),
+                unitCode,
+                customerName,
+                procedureType,
+                staffName: currentUserName,
+                execDate,
+                status: 'Mới tạo',
+                controlStaff: '',
+                controlApproveDate: '',
+                requirements: ''
+            };
+
+            procedureRecords.unshift(newRec);
+            closeAddModal();
+            renderTable();
+            showLiveAlert(`Tạo thành công hồ sơ cho căn <strong>${unitCode}</strong>`);
+        }
+
+        // EDIT RECORD HANDLER
+        function openEditModal(id) {
+            const rec = procedureRecords.find(r => r.id === id);
+            if (!rec) return;
+
+            document.getElementById('editRecordId').value = rec.id;
+            document.getElementById('editUnitCode').value = rec.unitCode;
+            document.getElementById('editCustomerName').value = rec.customerName;
+            document.getElementById('editProcedureType').value = rec.procedureType;
+            document.getElementById('editExecDate').value = rec.execDate;
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        function saveEditedRecord() {
+            const id = document.getElementById('editRecordId').value;
+            const rec = procedureRecords.find(r => r.id === id);
+            if (rec) {
+                rec.unitCode = document.getElementById('editUnitCode').value.trim();
+                rec.customerName = document.getElementById('editCustomerName').value.trim();
+                rec.procedureType = document.getElementById('editProcedureType').value;
+                rec.execDate = document.getElementById('editExecDate').value;
+                if (rec.status === 'Trả thủ tục') {
+                    rec.status = 'Mới tạo';
+                }
+            }
+            closeEditModal();
+            renderTable();
+            showLiveAlert(`Đã cập nhật hồ sơ <strong>${rec.unitCode}</strong>`);
+        }
+
+        // FORWARD CONTROL
+        function batchTransferControl() {
+            if (selectedRecordIds.length === 0) {
+                alert("Vui lòng chọn ít nhất một hồ sơ!");
+                return;
+            }
+            document.getElementById('modalSelectedCount').innerText = selectedRecordIds.length;
+            document.getElementById('controlForwardModal').classList.remove('hidden');
+        }
+
+        function closeControlModal() {
+            document.getElementById('controlForwardModal').classList.add('hidden');
+        }
+
+        function confirmForwardToControl() {
+            const controlStaff = document.getElementById('controlStaffSelect').value;
+
+            selectedRecordIds.forEach(id => {
+                const rec = procedureRecords.find(r => r.id === id);
+                if (rec) {
+                    rec.status = 'Chuyển Kiểm soát';
+                    rec.controlStaff = controlStaff;
+                }
+            });
+
+            closeControlModal();
+            selectedRecordIds = [];
+            document.getElementById('selectedCount').innerText = '0';
+            renderTable();
+            showLiveAlert(`Đã chuyển hồ sơ cho Chuyên viên Kiểm soát <strong>${controlStaff}</strong>`);
+        }
+
+        // REVIEW APPROVAL
+        function openReviewModal(id) {
+            activeReviewingRecordId = id;
+            const rec = procedureRecords.find(r => r.id === id);
+            if (!rec) return;
+
+            document.getElementById('revUnitCode').innerText = rec.unitCode;
+            document.getElementById('revCustomerName').innerText = rec.customerName;
+            document.getElementById('revProcedureType').innerText = rec.procedureType;
+            document.getElementById('revStaffName').innerText = rec.staffName;
+            document.getElementById('revFeedback').value = rec.requirements || '';
+
+            document.getElementById('reviewModal').classList.remove('hidden');
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModal').classList.add('hidden');
+        }
+
+        function processApproveRecord() {
+            const rec = procedureRecords.find(r => r.id === activeReviewingRecordId);
+            if (!rec) return;
+
+            rec.status = 'Đã duyệt';
+            rec.controlApproveDate = new Date().toISOString().split('T')[0];
+            rec.controlStaff = currentUserName;
+            rec.requirements = '';
+
+            closeReviewModal();
+            renderTable();
+            showLiveAlert(`Đã phê duyệt hồ sơ căn <strong>${rec.unitCode}</strong>`);
+        }
+
+        function processRejectRecord() {
+            const feedback = document.getElementById('revFeedback').value.trim();
+            if (!feedback) {
+                alert("Vui lòng nhập lý do/yêu cầu sửa đổi!");
+                return;
+            }
+
+            const rec = procedureRecords.find(r => r.id === activeReviewingRecordId);
+            if (!rec) return;
+
+            rec.status = 'Trả thủ tục';
+            rec.controlStaff = currentUserName;
+            rec.requirements = feedback;
+
+            closeReviewModal();
+            renderTable();
+            showLiveAlert(`Đã trả hồ sơ căn <strong>${rec.unitCode}</strong>`);
+        }
+
+        // REPORT & CHART
+        function generateReport() {
+            const tbody = document.getElementById('reportTableBody');
+            tbody.innerHTML = '';
+
+            const stats = {};
+            procedureRecords.forEach(r => {
+                const key = `${r.staffName}_${r.procedureType}`;
+                if (!stats[key]) {
+                    stats[key] = { staff: r.staffName, proc: r.procedureType, count: 0, approved: 0 };
+                }
+                stats[key].count++;
+                if (r.status === 'Đã duyệt') stats[key].approved++;
+            });
+
+            const keys = Object.keys(stats);
+            if (keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Không có dữ liệu báo cáo</td></tr>`;
+            } else {
+                keys.forEach(k => {
+                    const item = stats[k];
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="p-2 font-medium">${item.staff}</td>
+                        <td class="p-2"><span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-semibold">${item.proc}</span></td>
+                        <td class="p-2 text-center font-bold text-blue-900">${item.count}</td>
+                        <td class="p-2 text-center font-bold text-emerald-600">${item.approved}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            updateReportChart();
+        }
+
+        function initReportChart() {
+            const ctx = document.getElementById('reportChart').getContext('2d');
+            reportChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['TTĐC', 'TTKQ', 'CN cọc', 'TL cọc', 'HĐMB'],
+                    datasets: [{
+                        label: 'Số lượng hồ sơ',
+                        data: [1, 1, 0, 0, 1],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        function updateReportChart() {
+            if (!reportChartInstance) return;
+            const procCounts = { 'TTĐC': 0, 'TTKQ': 0, 'CN cọc': 0, 'TL cọc': 0, 'HĐMB': 0 };
+            procedureRecords.forEach(r => {
+                if (procCounts[r.procedureType] !== undefined) {
+                    procCounts[r.procedureType]++;
+                }
+            });
+            reportChartInstance.data.datasets[0].data = Object.values(procCounts);
+            reportChartInstance.update();
+        }
+
+        function exportReportExcel() {
+            showLiveAlert("Đã xuất báo cáo thống kê ra file Excel thành công!");
+        }
+
+        // LOOKUP HISTORY
+        function executeLookup() {
+            const code = document.getElementById('lookupUnitCode').value.trim().toLowerCase();
+            const container = document.getElementById('timelineContainer');
+            const resBox = document.getElementById('lookupResults');
+
+            if (!code) {
+                alert("Vui lòng nhập Mã căn cần tra cứu!");
+                return;
+            }
+
+            const history = procedureRecords.filter(r => r.unitCode.toLowerCase().includes(code));
+
+            document.getElementById('lkUnitDisplay').innerText = code.toUpperCase();
+            resBox.classList.remove('hidden');
+            container.innerHTML = '';
+
+            if (history.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400">Không tìm thấy lịch sử thủ tục cho mã căn này.</p>`;
+                return;
+            }
+
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "relative bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs shadow-sm";
+                div.innerHTML = `
+                    <div class="absolute -left-9 top-3 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-slate-900 text-sm">${item.procedureType}</span>
+                        <span class="text-slate-400 text-[11px]">${item.execDate || '-'}</span>
+                    </div>
+                    <div class="text-slate-600">Khách hàng: <strong>${item.customerName}</strong> | NV Thực hiện: <strong>${item.staffName}</strong></div>
+                    <div class="text-slate-600">Trạng thái: <strong class="text-blue-700">${item.status}</strong></div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // NOTIFICATIONS SYSTEM
+        function toggleNotifications() {
+            document.getElementById('notifPanel').classList.toggle('hidden');
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notifList');
+            list.innerHTML = '';
+            notifications.forEach(n => {
+                const div = document.createElement('div');
+                div.className = `p-3 hover:bg-slate-50 cursor-pointer ${n.read ? 'opacity-60' : 'font-semibold'}`;
+                div.innerHTML = `
+                    <div class="text-blue-900 font-bold mb-0.5">${n.title}</div>
+                    <div class="text-slate-600 text-[11px]">${n.content}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">${n.time}</div>
+                `;
+                list.appendChild(div);
+            });
+            const unread = notifications.filter(n => !n.read).length;
+            document.getElementById('notifBadge').innerText = unread;
+        }
+
+        function markAllNotificationsRead() {
+            notifications.forEach(n => n.read = true);
+            renderNotifications();
+        }
+
+        // LIVE TOAST ALERT
+        function showLiveAlert(msg) {
+            const alert = document.getElementById('liveAlert');
+            document.getElementById('liveAlertMessage').innerHTML = msg;
+            alert.classList.remove('translate-x-full');
+            setTimeout(() => {
+                closeLiveAlert();
+            }, 4000);
+        }
+
+        function closeLiveAlert() {
+            document.getElementById('liveAlert').classList.add('translate-x-full');
+        }
+    </script>
+</body>
+</html>

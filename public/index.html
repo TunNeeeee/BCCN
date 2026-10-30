@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Quản lý thủ tục & hồ sơ | BCCN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main id="loginView" class="layout">
+      <section class="panel panel-left">
+        <div class="login-brand">
+          <div class="brand-icon login-icon">BC</div>
+          <p class="kicker">BCCN · QUẢN LÝ HỒ SƠ</p>
+          <h1>Quản lý thủ tục<br />&amp; kiểm soát hồ sơ</h1>
+          <p class="lead">
+            Không gian làm việc cho chuyên viên thủ tục và kiểm soát: theo dõi,
+            luân chuyển, duyệt hồ sơ và xem báo cáo phòng ban.
+          </p>
+          <div class="login-highlights">
+            <span>Quản lý hồ sơ cá nhân</span>
+            <span>Tra cứu theo loại thủ tục</span>
+            <span>Luân chuyển kiểm soát</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel-right">
+        <form id="loginForm" class="card login-card">
+          <p class="kicker">CHÀO MỪNG BẠN</p>
+          <h2>Đăng nhập</h2>
+          <p class="login-description">Đăng nhập để tiếp tục công việc của bạn.</p>
+          <label for="username">Tên đăng nhập</label>
+          <input id="username" name="username" autocomplete="username" placeholder="Nhập tên đăng nhập" required />
+
+          <label for="password">Mật khẩu</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required />
+
+          <button type="submit" class="btn-primary login-submit">Đăng nhập</button>
+          <p id="message" class="message" aria-live="polite"></p>
+        </form>
+      </section>
+    </main>
+
+    <main id="dashboardView" class="dashboard hidden">
+      <header class="topbar">
+        <div class="brand-box">
+          <div class="brand-icon">BF</div>
+          <div>
+            <h2 class="brand-title">BÁO CÁO CÁ NHÂN</h2>
+            <p class="brand-sub">Chỉ đơn thuần là báo cáo cá nhân thui</p>
+          </div>
+        </div>
+
+        <div class="user-session">
+          <span class="session-label">Đang đăng nhập</span>
+          <button class="user-chip" id="userChip" type="button">
+            <span class="avatar-mark" id="userAvatar" aria-hidden="true">NV</span>
+            <span id="welcomeText">Tài khoản</span>
+          </button>
+        </div>
+
+        <div class="top-actions">
+          <button id="openCreateBtn" type="button" class="btn-primary">＋ Thêm hồ sơ</button>
+          <button id="importBtn" type="button" class="btn-import">Import Excel</button>
+          <button id="refreshBtn" type="button" class="btn-icon">Làm mới</button>
+          <button id="logoutBtn" type="button" class="btn-icon danger">Đăng xuất</button>
+        </div>
+      </header>
+
+      <section class="report-card">
+        <div class="context-banner">
+          <div class="context-copy">
+            <div class="context-badges">
+              <span class="scope-badge">Phạm vi dữ liệu cá nhân</span>
+              <span class="role-badge" id="roleBadge">Chuyên viên thủ tục</span>
+            </div>
+            <h1>Danh sách hồ sơ cá nhân</h1>
+            <p>
+              Hồ sơ của <strong id="staffName">Nhân viên</strong>
+              <span class="record-total">· <strong id="totalCount">0</strong> hồ sơ</span>
+            </p>
+          </div>
+          <div class="transfer-tools" id="transferTools">
+            <select id="kiemSoatInput" aria-label="Chọn chuyên viên kiểm soát" required>
+              <option value="">Chọn người kiểm soát</option>
+            </select>
+            <button id="transferBtn" class="btn-warn" type="button">Chuyển kiểm soát</button>
+          </div>
+        </div>
+
+        <section id="controlNav" class="control-nav hidden" aria-label="Điều hướng kiểm soát">
+          <div id="controlStatusTabs" class="control-nav-buttons">
+            <button type="button" id="pendingControlTab" class="control-nav-btn active">
+              Chưa xử lý
+              <span id="pendingControlCount" class="notification-badge">0</span>
+            </button>
+            <button type="button" id="resolvedControlTab" class="control-nav-btn">
+              Đã xử lý
+              <span id="resolvedControlCount" class="tab-count">0</span>
+            </button>
+          </div>
+          <div class="control-nav-buttons">
+            <button type="button" id="controlInboxBtn" class="control-nav-btn active">
+              Hộp thư kiểm soát
+            </button>
+            <button type="button" id="departmentListBtn" class="control-nav-btn">Danh sách phòng ban</button>
+          </div>
+          <button type="button" id="reportToggleBtn" class="btn-primary">Tạo báo cáo</button>
+        </section>
+
+        <section id="reportPanel" class="department-report hidden" aria-label="Tạo báo cáo phòng ban">
+          <label>
+            Nhân viên thực hiện
+            <select id="reportEmployeeSelect">
+              <option value="">Tất cả nhân viên</option>
+            </select>
+          </label>
+          <label>
+            Loại thủ tục
+            <select id="reportTypeSelect">
+              <option value="">Tất cả thủ tục</option>
+            </select>
+          </label>
+          <button type="button" id="generateReportBtn" class="btn-primary">Thống kê</button>
+          <p id="reportResult" class="report-result" aria-live="polite"></p>
+        </section>
+
+        <div class="filter-toolbar">
+          <div id="filterCaption" class="filter-caption">Lọc theo loại thủ tục</div>
+          <div id="tabFilters" class="tabs"></div>
+          <label class="search-box" for="searchInput">
+            <span aria-hidden="true">⌕</span>
+            <input id="searchInput" type="search" placeholder="Tìm mã căn, khách hàng..." />
+          </label>
+        </div>
+
+        <div class="table-wrap">
+          <table id="procedureTable">
+            <thead>
+              <tr>
+                <th id="selectHeaderCell" class="select-cell"><input type="checkbox" id="selectAll" aria-label="Chọn tất cả hồ sơ" /></th>
+                <th>STT</th>
+                <th>Mã căn</th>
+                <th>Tên khách hàng</th>
+                <th>Loại thủ tục</th>
+                <th>Nhân viên thủ tục</th>
+                <th>Ngày thực hiện</th>
+                <th>Trạng thái</th>
+                <th>Nhân viên kiểm soát</th>
+                <th>Ngày chuyển kiểm soát</th>
+                <th>Ngày kiểm soát duyệt</th>
+                <th>Yêu cầu bổ sung / sửa đổi</th>
+                <th id="actionHeader" class="action-cell">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="procedureTableBody"></tbody>
+          </table>
+        </div>
+        <nav id="pagination" class="pagination hidden" aria-label="Phân trang hồ sơ">
+          <span id="paginationSummary" class="pagination-summary"></span>
+          <div class="pagination-controls">
+            <button type="button" id="previousPageBtn" class="btn-icon pagination-btn">Trước</button>
+            <span id="pageIndicator" class="page-indicator"></span>
+            <button type="button" id="nextPageBtn" class="btn-icon pagination-btn">Sau</button>
+          </div>
+        </nav>
+        <div class="table-footer">
+          <span>Đang hiển thị <strong id="tableCount">0</strong> hồ sơ</span>
+          <span>Hệ thống quản lý thủ tục BCCN</span>
+        </div>
+        <p id="listMessage" class="message" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <dialog id="importDialog" class="edit-dialog">
+      <form id="importForm" class="card modal-form import-form">
+        <div class="create-heading">
+          <div class="create-heading-icon" aria-hidden="true">⇧</div>
+          <div>
+            <p class="kicker">NHẬP DỮ LIỆU</p>
+            <h3>Import hồ sơ từ Excel</h3>
+            <p class="create-description">Tải mẫu, điền hồ sơ rồi chọn file .xlsx để nhập.</p>
+          </div>
+        </div>
+        <div class="import-content">
+          <a id="downloadTemplateBtn" class="template-download" href="#">
+            <span class="template-icon" aria-hidden="true">↓</span>
+            <span>
+              <strong>Tải file mẫu Excel</strong>
+              <small>Bao gồm hướng dẫn, danh sách loại hồ sơ và định dạng ngày</small>
+            </span>
+          </a>
+          <label for="importFileInput" class="import-file-label">Chọn file Excel (.xlsx)</label>
+          <input id="importFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+          <p class="import-note">
+            Đối chiếu theo mã căn + tên khách hàng + loại hồ sơ. Các cột còn lại chỉ cập nhật khi có dữ liệu;
+            ô trống được giữ nguyên và hồ sơ không đổi sẽ không được ghi lại.
+          </p>
+          <div id="importResult" class="import-result hidden" role="status" aria-live="polite"></div>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" id="closeImportBtn" class="btn-ghost">Đóng</button>
+          <button type="submit" id="submitImportBtn" class="btn-primary" disabled>Kiểm tra &amp; nhập</button>
+        </div>
+        <p id="importMessage" class="message" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog id="controlReviewDialog" class="edit-dialog">
+      <form id="controlReviewForm" class="card modal-form review-form">
+        <div class="create-heading">
+          <div id="reviewDialogIcon" class="create-heading-icon" aria-hidden="true">✓</div>
+          <div>
+            <p class="kicker">KIỂM SOÁT HỒ SƠ</p>
+            <h3 id="reviewDialogTitle">Xác nhận kết quả</h3>
+            <p id="reviewDialogDescription" class="create-description"></p>
+          </div>
+        </div>
+        <div id="reviewRecordSummary" class="review-record-summary"></div>
+        <label id="returnReasonLabel" class="return-reason-label">
+          Yêu cầu bổ sung / sửa đổi
+          <textarea id="reviewReasonInput" rows="4" placeholder="Nhập nội dung cần bổ sung hoặc sửa đổi (nếu có)"></textarea>
+        </label>
+        <div class="dialog-actions">
+          <button type="button" id="cancelReviewBtn" class="btn-ghost">Quay lại</button>
+          <button type="submit" id="confirmReviewBtn" class="btn-primary">Xác nhận</button>
+        </div>
+        <p id="reviewMessage" class="message" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog id="createDialog" class="edit-dialog">
+      <form method="dialog" id="createForm" class="card modal-form create-form">
+        <div class="create-heading">
+          <div class="create-heading-icon" aria-hidden="true">＋</div>
+          <div>
+            <p class="kicker">QUẢN LÝ HỒ SƠ</p>
+            <h3>Thêm hồ sơ mới</h3>
+            <p class="create-description">Nhập thông tin căn hộ và chọn loại thủ tục cần thực hiện.</p>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title"><span>01</span> Thông tin căn hộ</div>
+          <label for="maCan">Mã căn <span class="required-mark">*</span></label>
+          <div class="apartment-input-row">
+            <input id="maCan" name="maCan" placeholder="Ví dụ: A1-1205" autocomplete="off" required />
+            <button type="button" id="lookupHistoryBtn" class="history-lookup-btn" aria-expanded="false" aria-controls="historyPanel">
+              <span aria-hidden="true">⌕</span> Tra cứu lịch sử
+            </button>
+          </div>
+          <div> </div>
+          <label for="tenKhachHang">Tên khách hàng <span class="required-mark">*</span></label>
+          <div class="apartment-input-row">
+            <input id="tenKhachHang" name="tenKhachHang" placeholder="Ví dụ: Nguyễn Văn A" autocomplete="off" required />
+          </div>
+          <p class="field-hint">Tra cứu các hồ sơ đã phát sinh theo mã căn, sắp xếp theo ngày thực hiện mới nhất.</p>
+
+          <section id="historyPanel" class="history-panel hidden" aria-live="polite">
+            <div class="history-heading">
+              <div>
+                <h4>Lịch sử hồ sơ căn <span id="historyApartment"></span></h4>
+                <p id="historySummary">Đang tải lịch sử...</p>
+              </div>
+              <button type="button" id="closeHistoryBtn" class="history-close-btn" aria-label="Đóng lịch sử">×</button>
+            </div>
+            <div id="historyList" class="history-list"></div>
+          </section>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title"><span>02</span> Thông tin thủ tục</div>
+          <div class="grid-2">
+            <label>
+              Loại hồ sơ <span class="required-mark">*</span>
+              <select id="loaiHoSo" name="loaiHoSo" required>
+                <option value="">Chọn loại hồ sơ</option>
+              </select>
+            </label>
+            <label>
+              Ngày thực hiện <span class="required-mark">*</span>
+              <input id="ngayThucHien" name="ngayThucHien" type="date" required />
+            </label>
+          </div>
+          <div class="assignee-card">
+            <span class="assignee-icon" aria-hidden="true">✓</span>
+            <span class="assignee-copy">
+              <strong>Nhân viên thực hiện</strong>
+              <small>Tự động theo tài khoản đang đăng nhập</small>
+            </span>
+            <input id="nhanVienThucHien" name="nhanVienThucHien" readonly aria-label="Nhân viên thực hiện" />
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" id="closeCreateBtn" class="btn-ghost">Hủy</button>
+          <button id="createBtn" type="submit" disabled class="btn-primary">Tạo hồ sơ</button>
+        </div>
+        <p id="createMessage" class="message" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog id="editDialog" class="edit-dialog">
+      <form method="dialog" id="editForm" class="card">
+        <p class="kicker">CẬP NHẬT THÔNG TIN</p>
+        <h3>Chỉnh sửa hồ sơ</h3>
+        <input id="editStt" type="hidden" />
+        <label>
+          Mã căn (không thể chỉnh sửa)
+          <input id="editMaCan" disabled />
+        </label>
+        <label>
+          Tên khách hàng (không thể chỉnh sửa)
+          <input id="editTenKhachHang" disabled />
+        </label>
+        <label>
+          Loại hồ sơ
+          <select id="editLoaiHoSo"></select>
+        </label>
+        <label>
+          Ngày thực hiện
+          <input id="editNgayThucHien" type="date" />
+        </label>
+        <label>
+          Trạng thái
+          <input id="editTrangThai" />
+        </label>
+        <label>
+          Yêu cầu bổ sung
+          <input id="editYeuCauBoSung" />
+        </label>
+        <div class="dialog-actions">
+          <button id="saveEditBtn" type="submit" class="btn-primary">Lưu thay đổi</button>
+          <button type="button" id="closeEditBtn" class="btn-ghost">Đóng</button>
+        </div>
+        <p id="editMessage" class="message" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <script src="/script.js"></script>
+  </body>
+</html>
