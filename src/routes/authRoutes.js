@@ -7,11 +7,17 @@ const {
   findUserByUsername,
   createUser,
   updatePasswordByRowIndex,
+  updateAvatarByRowIndex,
+  findAvatarByRowIndex,
 } = require("../repositories/userRepository");
 const { requireAuth } = require("../middleware/authMiddleware");
 const { addToken, hasToken, removeToken } = require("../services/tokenStore");
 
 const router = express.Router();
+const PASSWORD_SALT_ROUNDS = 10;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_BYTES = 72;
+const MAX_AVATAR_DATA_URL_LENGTH = 40000;
 
 function createAccessToken(user) {
   return jwt.sign(
@@ -43,19 +49,82 @@ async function isPasswordMatched(inputPassword, storedPassword) {
     return false;
   }
 
-  if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+  if (/^\$2[aby]\$\d{2}\$/.test(storedPassword)) {
     return bcrypt.compare(inputPassword, storedPassword);
   }
 
   return inputPassword === storedPassword;
 }
 
+function getPublicUser(user, avatar = "") {
+  return {
+    stt: user.stt,
+    username: user.username,
+    fullName: user.fullName,
+    position: user.position,
+    role: user.role,
+    avatar,
+  };
+}
+
+function getPasswordValidationMessage(password, label = "Password") {
+  if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+    return `${label} must contain at least ${MIN_PASSWORD_LENGTH} characters`;
+  }
+  if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) {
+    return `${label} must not exceed ${MAX_PASSWORD_BYTES} UTF-8 bytes`;
+  }
+  return "";
+}
+
+function isValidAvatarDataUrl(avatar) {
+  if (
+    typeof avatar !== "string" ||
+    avatar.length > MAX_AVATAR_DATA_URL_LENGTH
+  ) {
+    return false;
+  }
+
+  const match = avatar.match(
+    /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/
+  );
+  if (!match) {
+    return false;
+  }
+
+  const [, imageType, encodedImage] = match;
+  const image = Buffer.from(encodedImage, "base64");
+  if (image.toString("base64") !== encodedImage) {
+    return false;
+  }
+
+  if (imageType === "jpeg") {
+    return image.length >= 3 && image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff;
+  }
+  if (imageType === "png") {
+    return image.length >= 8 && image.subarray(0, 8).equals(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    );
+  }
+  return (
+    image.length >= 12 &&
+    image.toString("ascii", 0, 4) === "RIFF" &&
+    image.toString("ascii", 8, 12) === "WEBP"
+  );
+}
+
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, position, username, password, role, hashPassword } = req.body;
+    const { fullName, position, username, password, role } = req.body;
 
     if (!fullName || !position || !username || !password) {
       return res.status(400).json({ message: "fullName, position, username, password are required" });
+    }
+    const passwordValidationMessage = getPasswordValidationMessage(password);
+    if (passwordValidationMessage) {
+      return res.status(400).json({
+        message: passwordValidationMessage,
+      });
     }
 
     const existingUser = await findUserByUsername(username);
@@ -63,7 +132,7 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ message: "Username already exists" });
     }
 
-    const finalPassword = hashPassword ? await bcrypt.hash(password, 10) : password;
+    const finalPassword = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
     const user = await createUser({
       fullName,
       position,
@@ -108,21 +177,21 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    if (!/^\$2[aby]\$\d{2}\$/.test(user.password)) {
+      const migratedPassword = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+      await updatePasswordByRowIndex(user.rowIndex, migratedPassword);
+    }
+
     const accessToken = createAccessToken(user);
     const refreshToken = createRefreshToken(user);
     addToken(refreshToken);
+    const avatar = await findAvatarByRowIndex(user.rowIndex);
 
     return res.json({
       message: "Login successful",
       accessToken,
       refreshToken,
-      user: {
-        stt: user.stt,
-        username: user.username,
-        fullName: user.fullName,
-        position: user.position,
-        role: user.role,
-      },
+      user: getPublicUser(user, avatar),
     });
   } catch (error) {
     return res.status(500).json({
@@ -184,9 +253,23 @@ router.post("/logout", (req, res) => {
 
 router.post("/change-password", requireAuth, async (req, res) => {
   try {
-    const { oldPassword, newPassword, hashPassword } = req.body;
+    const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ message: "oldPassword and newPassword are required" });
+    }
+    const passwordValidationMessage = getPasswordValidationMessage(
+      newPassword,
+      "New password"
+    );
+    if (passwordValidationMessage) {
+      return res.status(400).json({
+        message: passwordValidationMessage,
+      });
+    }
+    if (oldPassword === newPassword) {
+      return res.status(400).json({
+        message: "New password must be different from the current password",
+      });
     }
 
     const user = await findUserByUsername(req.user.username);
@@ -199,7 +282,7 @@ router.post("/change-password", requireAuth, async (req, res) => {
       return res.status(401).json({ message: "Old password is incorrect" });
     }
 
-    const finalPassword = hashPassword ? await bcrypt.hash(newPassword, 10) : newPassword;
+    const finalPassword = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
     await updatePasswordByRowIndex(user.rowIndex, finalPassword);
 
     return res.json({ message: "Password changed successfully" });
@@ -213,7 +296,7 @@ router.post("/change-password", requireAuth, async (req, res) => {
 
 router.post("/forgot-password", async (req, res) => {
   try {
-    const { username, fullName, hashPassword } = req.body;
+    const { username, fullName } = req.body;
 
     if (!username || !fullName) {
       return res.status(400).json({ message: "username and fullName are required" });
@@ -225,7 +308,7 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     const temporaryPassword = crypto.randomBytes(4).toString("hex");
-    const finalPassword = hashPassword ? await bcrypt.hash(temporaryPassword, 10) : temporaryPassword;
+    const finalPassword = await bcrypt.hash(temporaryPassword, PASSWORD_SALT_ROUNDS);
 
     await updatePasswordByRowIndex(user.rowIndex, finalPassword);
 
@@ -241,8 +324,48 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-router.get("/me", requireAuth, (req, res) => {
-  return res.json({ user: req.user });
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const user = await findUserByUsername(req.user.username);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const avatar = await findAvatarByRowIndex(user.rowIndex);
+    return res.json({ user: getPublicUser(user, avatar) });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Cannot load profile",
+      error: error.message,
+    });
+  }
+});
+
+router.put("/profile/avatar", requireAuth, async (req, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!isValidAvatarDataUrl(avatar)) {
+      return res.status(400).json({
+        message: "Avatar must be a valid JPEG, PNG, or WebP image under 40 KB",
+      });
+    }
+
+    const user = await findUserByUsername(req.user.username);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await updateAvatarByRowIndex(user.rowIndex, avatar);
+    return res.json({
+      message: "Avatar updated successfully",
+      user: getPublicUser(user, avatar),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Cannot update avatar",
+      error: error.message,
+    });
+  }
 });
 
 module.exports = router;

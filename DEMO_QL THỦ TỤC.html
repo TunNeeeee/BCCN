@@ -52,6 +52,411 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+
+        :root {
+            color-scheme: light;
+            --app-navy: #101a2d;
+            --app-navy-soft: #1b2940;
+            --app-blue: #2563eb;
+            --app-yellow: #fbbf24;
+            --app-page: #f2f5fa;
+        }
+
+        body {
+            display: block;
+            min-height: 100vh;
+            background: var(--app-page);
+        }
+
+        body > header {
+            width: 100%;
+            min-height: 64px;
+            background: var(--app-navy);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
+        }
+
+        body > header > div {
+            width: 100%;
+            max-width: none;
+            min-height: 64px;
+            padding-right: 24px;
+            padding-left: 24px;
+        }
+
+        body > header h1 {
+            font-size: 15px;
+            letter-spacing: .035em;
+        }
+
+        body > header p {
+            color: #a7b3c6;
+            letter-spacing: .055em;
+        }
+
+        body > header .bg-blue-600 {
+            color: #172033;
+            background: var(--app-yellow);
+            box-shadow: 0 6px 16px rgba(251, 191, 36, .2);
+        }
+
+        .app-shell {
+            display: flex;
+            min-height: calc(100vh - 64px);
+        }
+
+        .sidebar {
+            position: sticky;
+            top: 64px;
+            display: flex;
+            width: 248px;
+            height: calc(100vh - 64px);
+            flex: 0 0 248px;
+            flex-direction: column;
+            padding: 22px 14px;
+            overflow-y: auto;
+            color: #d7dfec;
+            background: var(--app-navy);
+            border-right: 1px solid rgba(255, 255, 255, .06);
+        }
+
+        .sidebar-brand {
+            margin: 0 8px 22px;
+            padding: 0 0 20px;
+            border-bottom: 1px solid rgba(226, 232, 240, .12);
+        }
+
+        .sidebar-brand-label {
+            color: var(--app-yellow);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-brand p {
+            margin: 8px 0 0;
+            color: #8e9bb0;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        .sidebar-nav-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .sidebar-nav-item {
+            display: flex;
+            min-height: 44px;
+            align-items: center;
+            gap: 12px;
+            padding: 0 13px;
+            border: 0;
+            border-radius: 11px;
+            color: #c2ccda;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: left;
+            transition: color .18s ease, background .18s ease, transform .18s ease;
+            cursor: pointer;
+        }
+
+        .sidebar-nav-item i {
+            width: 18px;
+            color: #9aa8bd;
+            text-align: center;
+        }
+
+        .sidebar-nav-item:hover {
+            color: #fff;
+            background: rgba(148, 163, 184, .12);
+        }
+
+        .sidebar-nav-item.active {
+            color: #fff;
+            background: #2458d8;
+            box-shadow: 0 7px 18px rgba(37, 99, 235, .28);
+        }
+
+        .sidebar-nav-item.active i {
+            color: #fff;
+        }
+
+        .dashboard-main {
+            width: 100%;
+            max-width: 1760px;
+            min-width: 0;
+            flex: 1;
+            margin: 0 auto;
+            padding: 26px clamp(18px, 2.4vw, 38px) 42px;
+        }
+
+        #tab1Content {
+            gap: 18px;
+        }
+
+        #tab1Content > div:first-child {
+            padding: 20px 22px;
+            border: 1px solid #b8d0ff;
+            border-radius: 17px;
+            color: #14213a;
+            background: linear-gradient(110deg, #fff 0%, #f7faff 100%);
+            box-shadow: 0 8px 24px rgba(31, 65, 122, .06);
+        }
+
+        #tab1Content > div:first-child h2 {
+            color: #14213a;
+            font-size: 20px;
+            letter-spacing: -.025em;
+        }
+
+        #tab1Content > div:first-child p {
+            color: #64748b;
+        }
+
+        #tab1Content > div:first-child .flex.items-center.space-x-2.mb-1 > span:first-child {
+            color: #1d4ed8;
+            background: #e8f0ff;
+            border-color: #d5e3ff;
+        }
+
+        #tab1Content > div:first-child .flex.items-center.space-x-2.mb-1 > span:nth-child(2) {
+            color: #047857;
+            background: #e7f8f0;
+            border-color: #c6efdc;
+        }
+
+        #btnAddNew {
+            background: #1769f5;
+            box-shadow: 0 5px 12px rgba(37, 99, 235, .2);
+        }
+
+        #btnImportExcel {
+            color: #fff;
+            background: #16835d;
+            border-color: #16835d;
+        }
+
+        #btnForwardControl {
+            color: #172033;
+            background: #f5b91b;
+        }
+
+        .st-tab {
+            flex: 0 0 auto;
+            border: 1px solid transparent;
+            background: transparent;
+        }
+
+        .st-tab:hover {
+            background: #e8edf5;
+        }
+
+        #stTabALL.bg-slate-900 {
+            color: #fff;
+            background: var(--app-navy);
+        }
+
+        #tab1Content > .border-b {
+            gap: 14px;
+            flex-wrap: wrap;
+            border: 0;
+        }
+
+        #searchInput {
+            min-height: 40px;
+            border-color: #d5deeb;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, .04);
+        }
+
+        #procedureTypeFilters {
+            gap: 6px;
+            padding: 3px 0;
+        }
+
+        .proc-btn {
+            border: 1px solid #e1e7f0;
+            background: #fff;
+            transition: all .18s ease;
+        }
+
+        .proc-btn:hover {
+            color: #1d4ed8;
+            border-color: #b8d0ff;
+            background: #f5f8ff;
+        }
+
+        .proc-btn.bg-white {
+            color: #1d4ed8;
+            border-color: #bad0ff;
+            background: #eaf1ff;
+            box-shadow: none;
+        }
+
+        #tab1Content > .bg-slate-100.rounded-xl {
+            padding: 8px 11px;
+            border-color: #e1e7f0;
+            background: #f7f9fc;
+        }
+
+        #tab1Content > .bg-white.rounded-xl {
+            border-color: #dce3ed;
+            border-radius: 15px;
+            box-shadow: 0 8px 26px rgba(15, 23, 42, .055);
+        }
+
+        #tab1Content table {
+            min-width: 1120px;
+        }
+
+        #tab1Content table thead {
+            color: #f8fafc;
+            background: var(--app-navy-soft);
+        }
+
+        #tab1Content table thead th {
+            padding: 13px 12px;
+            border-right: 1px solid rgba(226, 232, 240, .08);
+            white-space: nowrap;
+        }
+
+        #personalRecordsTable > tr {
+            transition: background .15s ease;
+        }
+
+        #personalRecordsTable > tr:nth-child(even) {
+            background: #f7f9fc;
+        }
+
+        #personalRecordsTable > tr:hover {
+            background: #edf4ff;
+        }
+
+        #personalRecordsTable > tr > td {
+            padding: 12px;
+            border-color: #e5eaf1;
+            vertical-align: middle;
+        }
+
+        #personalRecordsTable > tr > td:nth-child(3) {
+            color: #1d4ed8;
+            font-weight: 700;
+        }
+
+        #personalRecordsTable input[type="checkbox"],
+        #selectAll {
+            width: 16px;
+            height: 16px;
+            accent-color: #2563eb;
+        }
+
+        #displayedRecordCount {
+            color: #1d4ed8;
+        }
+
+        #tab2Content > div,
+        #tab3Content > div,
+        #tab4Content > div {
+            border-color: #dce3ed;
+            border-radius: 16px;
+            box-shadow: 0 8px 26px rgba(15, 23, 42, .055);
+        }
+
+        @media (max-width: 900px) {
+            .app-shell {
+                display: block;
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 64px;
+                z-index: 20;
+                width: 100%;
+                height: auto;
+                padding: 10px 12px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                border-right: 0;
+                border-bottom: 1px solid rgba(255, 255, 255, .08);
+            }
+
+            .sidebar-brand {
+                display: none;
+            }
+
+            .sidebar-nav-list {
+                width: max-content;
+                flex-direction: row;
+                gap: 6px;
+            }
+
+            .sidebar-nav-item {
+                min-height: 40px;
+                padding: 0 12px;
+                white-space: nowrap;
+            }
+
+            .dashboard-main {
+                width: 100%;
+                padding: 20px 16px 32px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body > header > div {
+                padding: 10px 14px;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            body > header h1 {
+                max-width: 190px;
+                font-size: 12px;
+            }
+
+            body > header p {
+                max-width: 190px;
+                font-size: 9px;
+            }
+
+            body > header > div > .flex.items-center.space-x-4 {
+                gap: 8px;
+            }
+
+            #roleSelector {
+                max-width: 142px;
+                font-size: 10px;
+            }
+
+            #userAvatar {
+                display: none;
+            }
+
+            .dashboard-main {
+                padding-right: 12px;
+                padding-left: 12px;
+            }
+
+            #tab1Content > div:first-child {
+                padding: 16px;
+            }
+
+            #tab1Content > div:first-child h2 {
+                font-size: 18px;
+            }
+
+            #tab1Content > div:first-child .flex.flex-wrap {
+                width: 100%;
+            }
+
+            #tab1Content > div:first-child .flex.flex-wrap button {
+                flex: 1 1 auto;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
@@ -124,25 +529,30 @@
     </div>
 
     <!-- MAIN NAVIGATION TABS -->
-    <nav class="bg-white border-b border-slate-200 sticky top-16 z-20 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-6 overflow-x-auto custom-scrollbar text-sm font-medium">
-            <button id="tabNav1" onclick="switchMainTab('tab1')" class="py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2">
-                <i class="fa-solid fa-folder-open"></i><span>Báo Cáo Cá Nhân / Hồ Sơ</span>
+    <div class="app-shell">
+    <nav class="sidebar" aria-label="Điều hướng chính">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-label"><i class="fa-solid fa-shield-halved mr-1"></i> BCCN · HỒ SƠ</div>
+            <p>Không gian quản lý thủ tục, luân chuyển và kiểm soát hồ sơ.</p>
+        </div>
+        <div class="sidebar-nav-list">
+            <button id="tabNav1" onclick="switchMainTab('tab1')" class="sidebar-nav-item active">
+                <i class="fa-solid fa-folder-open"></i><span>Quản lý hồ sơ cá nhân</span>
             </button>
-            <button id="tabNav2" onclick="switchMainTab('tab2')" class="py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2">
-                <i class="fa-solid fa-building-user"></i><span>Thủ Tục Phòng Ban & Báo Cáo</span>
+            <button id="tabNav2" onclick="switchMainTab('tab2')" class="sidebar-nav-item">
+                <i class="fa-solid fa-building-user"></i><span>Phòng ban &amp; báo cáo</span>
             </button>
-            <button id="tabNav3" onclick="switchMainTab('tab3')" class="py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2">
-                <i class="fa-solid fa-magnifying-glass-location"></i><span>Tra Cứu Lịch Sử Theo Mã Căn</span>
+            <button id="tabNav3" onclick="switchMainTab('tab3')" class="sidebar-nav-item">
+                <i class="fa-solid fa-magnifying-glass-location"></i><span>Tra cứu lịch sử căn</span>
             </button>
-            <button id="tabNav4" onclick="switchMainTab('tab4')" class="py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2">
-                <i class="fa-solid fa-sliders"></i><span>Quản Trị & Cấu Hình</span>
+            <button id="tabNav4" onclick="switchMainTab('tab4')" class="sidebar-nav-item">
+                <i class="fa-solid fa-sliders"></i><span>Quản trị &amp; cấu hình</span>
             </button>
         </div>
     </nav>
 
     <!-- CONTENT BODY -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <main class="dashboard-main">
 
         <!-- TAB 1: BÁO CÁO CÁ NHÂN / DANH SÁCH HỒ SƠ -->
         <section id="tab1Content" class="space-y-6">
@@ -191,12 +601,7 @@
             <!-- PROCEDURE CATEGORY QUICK FILTERS -->
             <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-xs">
                 <span class="text-slate-500 font-medium px-2"><i class="fa-solid fa-filter mr-1"></i>Loại thủ tục:</span>
-                <button onclick="filterProcedureType('ALL')" id="procALL" class="proc-btn px-2.5 py-1 rounded-md font-medium bg-white text-blue-600 shadow-sm">Tất cả</button>
-                <button onclick="filterProcedureType('TTĐC')" id="procTTĐC" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">TTĐC (Đặt cọc)</button>
-                <button onclick="filterProcedureType('TTKQ')" id="procTTKQ" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">TTKQ (Ký quỹ)</button>
-                <button onclick="filterProcedureType('CN cọc')" id="procCN cọc" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">CN cọc</button>
-                <button onclick="filterProcedureType('TL cọc')" id="procTL cọc" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">TL cọc</button>
-                <button onclick="filterProcedureType('HĐMB')" id="procHĐMB" class="proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white">HĐMB</button>
+                <div id="procedureTypeFilters" class="flex items-center space-x-2"></div>
             </div>
 
             <!-- DATA TABLE -->
@@ -325,16 +730,17 @@
                     <div class="p-4 border border-slate-200 rounded-xl bg-slate-50">
                         <h3 class="text-xs font-bold uppercase text-slate-800 mb-3"><i class="fa-solid fa-sitemap text-blue-500 mr-1"></i>Cấu Hình Bậc Thủ Tục Nghiệp Vụ</h3>
                         <ul class="text-xs space-y-2 text-slate-700">
-                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Bậc 1:</strong> TTĐC (Thỏa thuận đặt cọc), TTKQ (Thỏa thuận ký quỹ)</li>
-                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Bậc 2 (Cọc):</strong> CN cọc (Chuyển nhượng cọc), TL cọc (Thanh lý cọc)</li>
-                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Bậc 3:</strong> HĐMB (Hợp đồng mua bán)</li>
+                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Hợp đồng:</strong> HD.TTĐC, HD.TTKQ, HD.HĐMB</li>
+                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Chuyển nhượng:</strong> CN.TTĐC, CN.TTKQ, CN.HĐMB</li>
+                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Phụ lục:</strong> PL.DIEUKHOAN, PL.GIA, PL.GIATIENDO, PL.TIENDO, PL.TTKH</li>
+                            <li class="p-2 bg-white rounded border border-slate-200 font-medium"><strong>Thanh lý / Khác:</strong> TL.HĐMB, TL.TTĐC, TL.TTKQ, Khac_PTG, Khac_XN.CONGNANG, Khac_XN.TTCN, Khac_XN.ĐKCN, Khac_DN.THANHTOAN, Khac_1, Khac_2</li>
                         </ul>
                     </div>
 
                     <div class="p-4 border border-slate-200 rounded-xl bg-slate-50">
                         <h3 class="text-xs font-bold uppercase text-slate-800 mb-3"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>Quy Tắc Cảnh Báo Căn A1/A2</h3>
                         <div class="text-xs text-slate-600 space-y-2">
-                            <p>Hệ thống tự động phát hiện khi chọn loại thủ tục <strong>Ký quỹ (TTKQ)</strong> đối với các căn thuộc tòa <strong>A1</strong> hoặc <strong>A2</strong>.</p>
+                            <p>Hệ thống tự động phát hiện khi chọn loại thủ tục <strong>HD.TTKQ</strong> đối với các căn thuộc tòa <strong>A1</strong> hoặc <strong>A2</strong>.</p>
                             <div class="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg font-semibold">
                                 "A1/A2 ký quỹ người nước ngoài, bạn đã chắc chắn chưa?"
                             </div>
@@ -345,6 +751,7 @@
         </section>
 
     </main>
+    </div>
 
     <!-- MODAL 1: THÊM MỚI HỒ SƠ THỦ TỤC -->
     <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
@@ -371,11 +778,6 @@
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Loại thủ tục <span class="text-rose-500">*</span></label>
                     <select id="addProcedureType" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 font-medium">
-                        <option value="TTĐC">TTĐC - Thỏa thuận đặt cọc</option>
-                        <option value="TTKQ">TTKQ - Thỏa thuận ký quỹ</option>
-                        <option value="CN cọc">CN cọc - Chuyển nhượng cọc</option>
-                        <option value="TL cọc">TL cọc - Thanh lý cọc</option>
-                        <option value="HĐMB">HĐMB - Hợp đồng mua bán</option>
                     </select>
                 </div>
 
@@ -426,11 +828,6 @@
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Loại thủ tục</label>
                     <select id="editProcedureType" class="w-full border border-slate-300 rounded-lg p-2.5">
-                        <option value="TTĐC">TTĐC - Thỏa thuận đặt cọc</option>
-                        <option value="TTKQ">TTKQ - Thỏa thuận ký quỹ</option>
-                        <option value="CN cọc">CN cọc - Chuyển nhượng cọc</option>
-                        <option value="TL cọc">TL cọc - Thanh lý cọc</option>
-                        <option value="HĐMB">HĐMB - Hợp đồng mua bán</option>
                     </select>
                 </div>
 
@@ -592,6 +989,30 @@
 
     <!-- SCRIPT DATA & CORE LOGIC -->
     <script>
+        const PROCEDURE_TYPES = [
+            'HD.TTĐC',
+            'HD.TTKQ',
+            'HD.HĐMB',
+            'CN.TTĐC',
+            'CN.TTKQ',
+            'CN.HĐMB',
+            'PL.DIEUKHOAN',
+            'PL.GIA',
+            'PL.GIATIENDO',
+            'PL.TIENDO',
+            'PL.TTKH',
+            'TL.HĐMB',
+            'TL.TTĐC',
+            'TL.TTKQ',
+            'Khac_PTG',
+            'Khac_XN.CONGNANG',
+            'Khac_XN.TTCN',
+            'Khac_XN.ĐKCN',
+            'Khac_DN.THANHTOAN',
+            'Khac_1',
+            'Khac_2'
+        ];
+
         // MASTER STATE
         let currentUserRole = 'Chuyên viên Thủ tục';
         let currentUserName = 'Thu xinh';
@@ -605,7 +1026,7 @@
                 id: 'REC001',
                 unitCode: 'A1-0502',
                 customerName: 'Nguyễn Văn Hùng',
-                procedureType: 'TTĐC',
+                procedureType: 'HD.TTĐC',
                 staffName: 'Thu xinh',
                 execDate: '2026-10-20',
                 status: 'Đã duyệt',
@@ -617,7 +1038,7 @@
                 id: 'REC002',
                 unitCode: 'B2-1208',
                 customerName: 'Trần Thị Mai',
-                procedureType: 'HĐMB',
+                procedureType: 'HD.HĐMB',
                 staffName: 'Thu xinh',
                 execDate: '2026-10-22',
                 status: 'Chuyển Kiểm soát',
@@ -629,7 +1050,7 @@
                 id: 'REC003',
                 unitCode: 'C1-0805',
                 customerName: 'Lê Hoàng Nam',
-                procedureType: 'TTKQ',
+                procedureType: 'HD.TTKQ',
                 staffName: 'Thu xinh',
                 execDate: '2026-10-25',
                 status: 'Trả thủ tục',
@@ -641,7 +1062,7 @@
 
         // System Notifications
         let notifications = [
-            { id: 1, title: 'Hồ sơ bị trả về', content: 'Căn C1-0805 (TTKQ) bị trả về. Lý do: Thiếu bản sao CCCD.', time: '10 phút trước', read: false },
+            { id: 1, title: 'Hồ sơ bị trả về', content: 'Căn C1-0805 (HD.TTKQ) bị trả về. Lý do: Thiếu bản sao CCCD.', time: '10 phút trước', read: false },
             { id: 2, title: 'Thông báo hệ thống', content: 'Tính năng Import file Excel thật (.xlsx) đã sẵn sàng.', time: 'Vừa xong', read: false }
         ];
 
@@ -653,10 +1074,41 @@
 
         // INITIALIZATION
         window.onload = function() {
+            initializeProcedureTypes();
             renderTable();
             renderNotifications();
             initReportChart();
             setupDropZoneEvents();
+        }
+
+        function initializeProcedureTypes() {
+            const addSelect = document.getElementById('addProcedureType');
+            const editSelect = document.getElementById('editProcedureType');
+            const addPlaceholder = document.createElement('option');
+            addPlaceholder.value = '';
+            addPlaceholder.textContent = 'Chọn loại hồ sơ';
+            addSelect.appendChild(addPlaceholder);
+
+            PROCEDURE_TYPES.forEach(type => {
+                [addSelect, editSelect].forEach(select => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    select.appendChild(option);
+                });
+            });
+
+            const filters = document.getElementById('procedureTypeFilters');
+            [['ALL', 'Tất cả'], ...PROCEDURE_TYPES.map(type => [type, type])].forEach(([value, label]) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.dataset.procedureType = value;
+                button.className = 'proc-btn whitespace-nowrap px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white';
+                button.textContent = label;
+                button.addEventListener('click', () => filterProcedureType(value));
+                filters.appendChild(button);
+            });
+            filterProcedureType('ALL');
         }
 
         // NAVIGATION TAB SWITCHING
@@ -665,22 +1117,22 @@
                 document.getElementById(id).classList.add('hidden');
             });
             ['tabNav1', 'tabNav2', 'tabNav3', 'tabNav4'].forEach(id => {
-                document.getElementById(id).className = 'py-3.5 px-1 whitespace-nowrap text-slate-500 hover:text-slate-800 flex items-center space-x-2';
+                document.getElementById(id).classList.remove('active');
             });
 
             if (tabId === 'tab1') {
                 document.getElementById('tab1Content').classList.remove('hidden');
-                document.getElementById('tabNav1').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+                document.getElementById('tabNav1').classList.add('active');
             } else if (tabId === 'tab2') {
                 document.getElementById('tab2Content').classList.remove('hidden');
-                document.getElementById('tabNav2').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+                document.getElementById('tabNav2').classList.add('active');
                 generateReport();
             } else if (tabId === 'tab3') {
                 document.getElementById('tab3Content').classList.remove('hidden');
-                document.getElementById('tabNav3').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+                document.getElementById('tabNav3').classList.add('active');
             } else if (tabId === 'tab4') {
                 document.getElementById('tab4Content').classList.remove('hidden');
-                document.getElementById('tabNav4').className = 'py-3.5 px-1 whitespace-nowrap text-blue-600 border-b-2 border-blue-600 font-semibold flex items-center space-x-2';
+                document.getElementById('tabNav4').classList.add('active');
             }
         }
 
@@ -741,6 +1193,13 @@
                 return true;
             });
 
+            const selectableRecords = filtered.filter(r => r.status !== 'Đã duyệt');
+            const selectAllHeader = document.getElementById('selectAll').closest('th');
+            selectAllHeader.classList.toggle('hidden', selectableRecords.length === 0);
+            if (selectableRecords.length === 0) {
+                document.getElementById('selectAll').checked = false;
+            }
+
             updateTabBadges();
 
             document.getElementById('displayedRecordCount').innerText = filtered.length;
@@ -763,10 +1222,13 @@
 
                 let actionHTML = '';
                 if (currentUserRole === 'Chuyên viên Thủ tục' || currentUserRole === 'Admin') {
-                    if (r.status === 'Mới tạo' || r.status === 'Trả thủ tục') {
+                    if (r.status === 'Mới tạo' || r.status === 'Trả thủ tục' || r.status === 'Đã duyệt') {
                         actionHTML += `<button onclick="openEditModal('${r.id}')" class="text-blue-600 hover:text-blue-800 font-semibold mr-2"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>`;
                     } else {
                         actionHTML += `<span class="text-slate-400 text-[11px]"><i class="fa-solid fa-lock"></i> Khóa sửa</span>`;
+                    }
+                    if (r.status === 'Đã duyệt') {
+                        actionHTML += `<button onclick="deleteRecord('${r.id}')" class="text-rose-600 hover:text-rose-800 font-semibold"><i class="fa-solid fa-trash"></i> Xóa</button>`;
                     }
                 }
 
@@ -779,9 +1241,12 @@
                 }
 
                 const isChecked = selectedRecordIds.includes(r.id) ? 'checked' : '';
+                const selectionControl = r.status === 'Đã duyệt'
+                    ? ''
+                    : `<input type="checkbox" onchange="toggleSelectRecord('${r.id}')" ${isChecked} class="rounded text-blue-600">`;
 
                 tr.innerHTML = `
-                    <td class="p-3 text-center"><input type="checkbox" onchange="toggleSelectRecord('${r.id}')" ${isChecked} class="rounded text-blue-600"></td>
+                    <td class="p-3 text-center">${selectionControl}</td>
                     <td class="p-3 text-center font-medium text-slate-500">${idx + 1}</td>
                     <td class="p-3 font-bold text-slate-900">${r.unitCode}</td>
                     <td class="p-3 font-medium">${r.customerName}</td>
@@ -812,10 +1277,11 @@
         function filterProcedureType(proc) {
             currentProcFilter = proc;
             document.querySelectorAll('.proc-btn').forEach(btn => {
-                btn.className = "proc-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white";
+                btn.className = "proc-btn whitespace-nowrap px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-white";
             });
-            const activeBtn = document.getElementById(`proc${proc}`);
-            if (activeBtn) activeBtn.className = "proc-btn px-2.5 py-1 rounded-md font-medium bg-white text-blue-600 shadow-sm";
+            const activeBtn = Array.from(document.querySelectorAll('.proc-btn'))
+                .find(btn => btn.dataset.procedureType === proc);
+            if (activeBtn) activeBtn.className = "proc-btn whitespace-nowrap px-2.5 py-1 rounded-md font-medium bg-white text-blue-600 shadow-sm";
             renderTable();
         }
 
@@ -830,6 +1296,9 @@
         }
 
         function toggleSelectRecord(id) {
+            const record = procedureRecords.find(r => r.id === id);
+            if (!record || record.status === 'Đã duyệt') return;
+
             if (selectedRecordIds.includes(id)) {
                 selectedRecordIds = selectedRecordIds.filter(i => i !== id);
             } else {
@@ -840,7 +1309,7 @@
 
         function toggleSelectAll(masterCb) {
             if (masterCb.checked) {
-                selectedRecordIds = procedureRecords.map(r => r.id);
+                selectedRecordIds = procedureRecords.filter(r => r.status !== 'Đã duyệt').map(r => r.id);
             } else {
                 selectedRecordIds = [];
             }
@@ -951,7 +1420,7 @@
 
                         const unitCode = getVal(['MÃ CĂN', 'MA CAN', 'MÃ CĂN HỘ', 'MÃ']);
                         const customerName = getVal(['TÊN KH', 'TEN KH', 'TÊN KHÁCH HÀNG', 'KHÁCH HÀNG']);
-                        const procedureType = getVal(['LOẠI TT', 'LOAI TT', 'LOẠI THỦ TỤC']) || 'TTĐC';
+                        const procedureType = getVal(['LOẠI TT', 'LOAI TT', 'LOẠI THỦ TỤC']) || 'HD.TTĐC';
                         const staffName = getVal(['NV THỦ TỤC', 'NV THU TUC', 'NHÂN VIÊN THỦ TỤC']) || currentUserName;
                         const execDate = getVal(['NGÀY TH', 'NGAY TH', 'NGÀY THỰC HIỆN']) || new Date().toISOString().split('T')[0];
                         const status = getVal(['TRẠNG THÁI', 'TRANG THAI']) || 'Mới tạo';
@@ -1092,6 +1561,18 @@
             showLiveAlert(`Đã cập nhật hồ sơ <strong>${rec.unitCode}</strong>`);
         }
 
+        function deleteRecord(id) {
+            const record = procedureRecords.find(r => r.id === id);
+            if (!record || record.status !== 'Đã kiểm soát') return;
+            if (!confirm(`Bạn có chắc muốn xóa hồ sơ của căn ${record.unitCode}?`)) return;
+
+            procedureRecords = procedureRecords.filter(r => r.id !== id);
+            selectedRecordIds = selectedRecordIds.filter(selectedId => selectedId !== id);
+            document.getElementById('selectedCount').innerText = selectedRecordIds.length;
+            renderTable();
+            showLiveAlert(`Đã xóa hồ sơ căn <strong>${record.unitCode}</strong>`);
+        }
+
         // FORWARD CONTROL
         function batchTransferControl() {
             if (selectedRecordIds.length === 0) {
@@ -1216,10 +1697,10 @@
             reportChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['TTĐC', 'TTKQ', 'CN cọc', 'TL cọc', 'HĐMB'],
+                    labels: PROCEDURE_TYPES,
                     datasets: [{
                         label: 'Số lượng hồ sơ',
-                        data: [1, 1, 0, 0, 1],
+                        data: PROCEDURE_TYPES.map(type => procedureRecords.filter(record => record.procedureType === type).length),
                         backgroundColor: '#3b82f6',
                         borderRadius: 6
                     }]
@@ -1235,13 +1716,9 @@
 
         function updateReportChart() {
             if (!reportChartInstance) return;
-            const procCounts = { 'TTĐC': 0, 'TTKQ': 0, 'CN cọc': 0, 'TL cọc': 0, 'HĐMB': 0 };
-            procedureRecords.forEach(r => {
-                if (procCounts[r.procedureType] !== undefined) {
-                    procCounts[r.procedureType]++;
-                }
-            });
-            reportChartInstance.data.datasets[0].data = Object.values(procCounts);
+            reportChartInstance.data.datasets[0].data = PROCEDURE_TYPES.map(
+                type => procedureRecords.filter(record => record.procedureType === type).length
+            );
             reportChartInstance.update();
         }
 

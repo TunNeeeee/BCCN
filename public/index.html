@@ -58,8 +58,11 @@
 
         <div class="user-session">
           <span class="session-label">Đang đăng nhập</span>
-          <button class="user-chip" id="userChip" type="button">
-            <span class="avatar-mark" id="userAvatar" aria-hidden="true">NV</span>
+          <button class="user-chip" id="userChip" type="button" aria-label="Mở trang thông tin cá nhân">
+            <span class="avatar-mark" id="userAvatar" aria-hidden="true">
+              <span id="userAvatarInitials">NV</span>
+              <img id="userAvatarImage" class="hidden" alt="" />
+            </span>
             <span id="welcomeText">Tài khoản</span>
           </button>
         </div>
@@ -67,6 +70,8 @@
         <div class="top-actions">
           <button id="openCreateBtn" type="button" class="btn-primary">＋ Thêm hồ sơ</button>
           <button id="importBtn" type="button" class="btn-import">Import Excel</button>
+          <button id="exportAccountBtn" type="button" class="btn-export">Excel tài khoản</button>
+          <button id="exportFilteredBtn" type="button" class="btn-export">Excel theo bộ lọc</button>
           <button id="refreshBtn" type="button" class="btn-icon">Làm mới</button>
           <button id="logoutBtn" type="button" class="btn-icon danger">Đăng xuất</button>
         </div>
@@ -137,6 +142,7 @@
             <span aria-hidden="true">⌕</span>
             <input id="searchInput" type="search" placeholder="Tìm mã căn, khách hàng..." />
           </label>
+          <button id="resetFiltersBtn" type="button" class="btn-reset-filters">Xóa bộ lọc</button>
         </div>
 
         <div class="table-wrap">
@@ -144,18 +150,31 @@
             <thead>
               <tr>
                 <th id="selectHeaderCell" class="select-cell"><input type="checkbox" id="selectAll" aria-label="Chọn tất cả hồ sơ" /></th>
-                <th>STT</th>
                 <th>Mã căn</th>
-                <th>Tên khách hàng</th>
+                <th class="customer-name-column">Tên khách hàng</th>
                 <th>Loại thủ tục</th>
-                <th>Nhân viên thủ tục</th>
+                <th class="specialist-column">Nhân viên thủ tục</th>
                 <th>Ngày thực hiện</th>
                 <th>Trạng thái</th>
-                <th>Nhân viên kiểm soát</th>
+                <th class="control-column">Nhân viên kiểm soát</th>
                 <th>Ngày chuyển kiểm soát</th>
                 <th>Ngày kiểm soát duyệt</th>
                 <th>Yêu cầu bổ sung / sửa đổi</th>
                 <th id="actionHeader" class="action-cell">Thao tác</th>
+              </tr>
+              <tr class="column-filter-row">
+                <th id="columnFilterSelectCell" class="select-cell"></th>
+                <th><select data-column-filter="maCan" aria-label="Lọc mã căn"><option value="">Tất cả mã căn</option></select></th>
+                <th><select data-column-filter="tenKhachHang" aria-label="Lọc tên khách hàng"><option value="">Tất cả khách hàng</option></select></th>
+                <th><select data-column-filter="loaiHoSo" aria-label="Lọc loại thủ tục"><option value="">Tất cả loại hồ sơ</option></select></th>
+                <th class="specialist-column"><select data-column-filter="nhanVienThucHien" aria-label="Lọc nhân viên thủ tục"><option value="">Tất cả nhân viên</option></select></th>
+                <th><input type="date" data-column-filter="ngayThucHien" aria-label="Lọc ngày thực hiện" /></th>
+                <th><select data-column-filter="trangThaiHoSo" aria-label="Lọc trạng thái"><option value="">Tất cả trạng thái</option></select></th>
+                <th class="control-column"><select data-column-filter="kiemSoat" aria-label="Lọc nhân viên kiểm soát"><option value="">Tất cả kiểm soát</option></select></th>
+                <th><input type="date" data-column-filter="ngayChuyenKiemSoat" aria-label="Lọc ngày chuyển kiểm soát" /></th>
+                <th><input type="date" data-column-filter="ngayKiemSoatDuyet" aria-label="Lọc ngày kiểm soát duyệt" /></th>
+                <th><select data-column-filter="yeuCauBoSung" aria-label="Lọc yêu cầu bổ sung"><option value="">Tất cả yêu cầu</option></select></th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="procedureTableBody"></tbody>
@@ -174,6 +193,77 @@
           <span>Hệ thống quản lý thủ tục BCCN</span>
         </div>
         <p id="listMessage" class="message" aria-live="polite"></p>
+      </section>
+
+      <section id="profilePage" class="profile-page hidden" aria-labelledby="profilePageTitle">
+        <div class="profile-page-heading">
+          <div>
+            <p class="kicker">TÀI KHOẢN CỦA BẠN</p>
+            <h1 id="profilePageTitle">Thông tin cá nhân</h1>
+            <p>Quản lý thông tin, ảnh đại diện và bảo mật tài khoản.</p>
+          </div>
+          <button id="backToDashboardBtn" type="button" class="btn-ghost">← Quay lại hồ sơ</button>
+        </div>
+
+        <div class="profile-grid">
+          <section class="profile-card">
+            <div class="profile-section-heading">
+              <span class="profile-heading-icon">◎</span>
+              <div>
+                <h2>Hồ sơ cá nhân</h2>
+                <p>Thông tin được sử dụng trong hệ thống.</p>
+              </div>
+            </div>
+
+            <div class="profile-avatar-section">
+              <button id="profileAvatarButton" class="profile-avatar" type="button" aria-label="Xem ảnh đại diện" disabled>
+                <span id="profileAvatarInitials">NV</span>
+                <img id="profileAvatarImage" class="hidden" alt="Ảnh đại diện" />
+              </button>
+              <div class="profile-avatar-actions">
+                <strong>Ảnh đại diện</strong>
+                <span>Ảnh sẽ được thu nhỏ và lưu an toàn cùng tài khoản.</span>
+                <input id="profileAvatarInput" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
+                <div class="profile-avatar-buttons">
+                  <button id="chooseAvatarBtn" type="button" class="btn-primary">Chọn ảnh</button>
+                  <button id="uploadAvatarBtn" type="button" class="btn-ghost" disabled>Lưu ảnh</button>
+                </div>
+              </div>
+            </div>
+
+            <dl class="profile-details">
+              <div><dt>Họ và tên</dt><dd id="profileFullName">Đang tải...</dd></div>
+              <div><dt>Chức vụ</dt><dd id="profilePosition">—</dd></div>
+              <div><dt>Tên đăng nhập</dt><dd id="profileUsername">—</dd></div>
+              <div><dt>Vai trò</dt><dd id="profileRole">—</dd></div>
+            </dl>
+          </section>
+
+          <section class="profile-card">
+            <div class="profile-section-heading">
+              <span class="profile-heading-icon security-icon">✓</span>
+              <div>
+                <h2>Đổi mật khẩu</h2>
+                <p>Chọn mật khẩu mới có ít nhất 8 ký tự.</p>
+              </div>
+            </div>
+            <form id="changePasswordForm" class="password-form">
+              <label for="currentPassword">Mật khẩu hiện tại
+                <input id="currentPassword" type="password" autocomplete="current-password" required />
+              </label>
+              <label for="newPassword">Mật khẩu mới
+                <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
+              </label>
+              <label for="confirmNewPassword">Nhập lại mật khẩu mới
+                <input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required />
+              </label>
+              <div class="password-form-footer">
+                <p id="profileMessage" class="message" aria-live="polite"></p>
+                <button id="changePasswordBtn" type="submit" class="btn-primary">Cập nhật mật khẩu</button>
+              </div>
+            </form>
+          </section>
+        </div>
       </section>
     </main>
 
@@ -306,40 +396,59 @@
     </dialog>
 
     <dialog id="editDialog" class="edit-dialog">
-      <form method="dialog" id="editForm" class="card">
-        <p class="kicker">CẬP NHẬT THÔNG TIN</p>
-        <h3>Chỉnh sửa hồ sơ</h3>
-        <input id="editStt" type="hidden" />
-        <label>
-          Mã căn (không thể chỉnh sửa)
-          <input id="editMaCan" disabled />
-        </label>
-        <label>
-          Tên khách hàng (không thể chỉnh sửa)
-          <input id="editTenKhachHang" disabled />
-        </label>
-        <label>
-          Loại hồ sơ
-          <select id="editLoaiHoSo"></select>
-        </label>
-        <label>
-          Ngày thực hiện
-          <input id="editNgayThucHien" type="date" />
-        </label>
-        <label>
-          Trạng thái
-          <input id="editTrangThai" />
-        </label>
-        <label>
-          Yêu cầu bổ sung
-          <input id="editYeuCauBoSung" />
-        </label>
-        <div class="dialog-actions">
+      <form id="editForm" class="card modal-form edit-form">
+        <div class="create-heading">
+          <div class="create-heading-icon" aria-hidden="true">✎</div>
+          <div>
+            <p class="kicker">CẬP NHẬT THÔNG TIN</p>
+            <h3>Chỉnh sửa hồ sơ</h3>
+            <p class="create-description">Cập nhật thông tin khách hàng và tiến độ hồ sơ.</p>
+          </div>
+          <button type="button" id="closeEditBtn" class="edit-close-btn" aria-label="Đóng cửa sổ sửa">×</button>
+        </div>
+        <div class="form-section edit-form-section">
+          <input id="editStt" type="hidden" />
+          <div class="edit-identity">
+            <span class="edit-identity-label">Mã căn</span>
+            <input id="editMaCan" disabled aria-label="Mã căn không thể chỉnh sửa" />
+          </div>
+          <label for="editTenKhachHang">
+            Tên khách hàng <span class="required-mark">*</span>
+            <input id="editTenKhachHang" maxlength="200" autocomplete="name" required />
+          </label>
+        </div>
+        <div class="form-section edit-form-section">
+          <div class="section-title"><span>01</span> Thông tin hồ sơ</div>
+          <div class="grid-2">
+            <label>
+              Loại hồ sơ
+              <select id="editLoaiHoSo" required></select>
+            </label>
+            <label>
+              Ngày thực hiện
+              <input id="editNgayThucHien" type="date" required />
+            </label>
+            <label>
+              Trạng thái
+              <input id="editTrangThai" />
+            </label>
+            <label>
+              Yêu cầu bổ sung
+              <input id="editYeuCauBoSung" />
+            </label>
+          </div>
+        </div>
+        <div class="dialog-actions edit-dialog-actions">
+          <button type="button" id="cancelEditBtn" class="btn-ghost">Hủy</button>
           <button id="saveEditBtn" type="submit" class="btn-primary">Lưu thay đổi</button>
-          <button type="button" id="closeEditBtn" class="btn-ghost">Đóng</button>
         </div>
         <p id="editMessage" class="message" aria-live="polite"></p>
       </form>
+    </dialog>
+
+    <dialog id="avatarPreviewDialog" class="avatar-preview-dialog" aria-label="Xem ảnh đại diện">
+      <button id="closeAvatarPreviewBtn" class="avatar-preview-close" type="button" aria-label="Đóng ảnh">×</button>
+      <img id="avatarPreviewImage" alt="Ảnh đại diện phóng to" />
     </dialog>
 
     <script src="/script.js"></script>

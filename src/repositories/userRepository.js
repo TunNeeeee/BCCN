@@ -1,4 +1,9 @@
-const { getUsersRows, appendUserRow, updateRange } = require("../services/googleSheets");
+const {
+  getUsersRows,
+  appendUserRow,
+  batchUpdateRanges,
+  updateRange,
+} = require("../services/googleSheets");
 const env = require("../config/env");
 
 function normalizeUserRow(row) {
@@ -47,6 +52,16 @@ async function listUsersByRole(role) {
       return true;
     })
     .map(({ fullName, role: userRole }) => ({ fullName: fullName.trim(), role: userRole }));
+}
+
+async function listAllUserNames() {
+  const usersRows = await getUsersRows();
+  return [...new Set(
+    usersRows
+      .map(normalizeUserRow)
+      .map((user) => user.fullName.trim())
+      .filter(Boolean)
+  )];
 }
 
 async function findUserByUsername(username) {
@@ -102,9 +117,30 @@ async function updatePasswordByRowIndex(rowIndex, password) {
   await updateRange(range, [[password]]);
 }
 
+async function updateAvatarByRowIndex(rowIndex, avatar) {
+  await batchUpdateRanges([
+    {
+      range: `${env.googleUsersSheetName}!G1`,
+      values: [["ẢNH ĐẠI DIỆN"]],
+    },
+    {
+      range: `${env.googleUsersSheetName}!G${rowIndex}`,
+      values: [[avatar]],
+    },
+  ]);
+}
+
+async function findAvatarByRowIndex(rowIndex) {
+  const rows = await getUsersRows(`${env.googleUsersSheetName}!G${rowIndex}`);
+  return String(rows[0]?.[0] || "");
+}
+
 module.exports = {
   findUserByUsername,
   listUsersByRole,
+  listAllUserNames,
   createUser,
   updatePasswordByRowIndex,
+  updateAvatarByRowIndex,
+  findAvatarByRowIndex,
 };

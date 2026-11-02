@@ -17,7 +17,8 @@ const {
   findProcedureByStt,
   appendProcedure,
   appendProcedures,
-  updateProcedureByRowIndex,
+  updateProceduresByRowIndex,
+  deleteProcedureByStt,
 } = require("../repositories/masterRepository");
 
 const {
@@ -49,19 +50,33 @@ const CONTROL_ROLES = [
 ];
 
 const PROCEDURE_TYPES = [
-  "Thỏa thuận đặt cọc",
-  "Thỏa thuận ký quỹ",
-  "Chuyển nhượng",
-  "Thanh lý",
-  "Hợp đồng mua bán",
-  "Phụ lục khách hàng",
-  "Phụ lục khác",
+  "HD.TTĐC",
+  "HD.TTKQ",
+  "HD.HĐMB",
+  "CN.TTĐC",
+  "CN.TTKQ",
+  "CN.HĐMB",
+  "PL.DIEUKHOAN",
+  "PL.GIA",
+  "PL.GIATIENDO",
+  "PL.TIENDO",
+  "PL.TTKH",
+  "TL.HĐMB",
+  "TL.TTĐC",
+  "TL.TTKQ",
+  "Khac_PTG",
+  "Khac_XN.CONGNANG",
+  "Khac_XN.TTCN",
+  "Khac_XN.ĐKCN",
+  "Khac_DN.THANHTOAN",
+  "Khac_1",
+  "Khac_2",
 ];
 
 const RESTRICTED_DUPLICATE_TYPES = [
-  "Thỏa thuận đặt cọc",
-  "Thỏa thuận ký quỹ",
-  "Hợp đồng mua bán",
+  "HD.TTĐC",
+  "HD.TTKQ",
+  "HD.HĐMB",
 ];
 
 const MAX_IMPORT_ROWS = 1000;
@@ -209,7 +224,7 @@ function normalizedHeader(value) {
 }
 
 // ==========================================
-// 4. TẠO FILE EXCEL MẪU 9 CỘT
+// 4. TẠO FILE EXCEL MẪU 8 CỘT
 // ==========================================
 
 function buildImportTemplate() {
@@ -231,13 +246,13 @@ function buildImportTemplate() {
   guide.addRows([
     ["HƯỚNG DẪN NHẬP HỒ SƠ BCCN"],
     ["1. Chỉ nhập dữ liệu tại sheet DATA_IMPORT, bắt đầu từ dòng 2."],
-    ["2. Giữ nguyên đủ 9 cột và tên tiêu đề; mỗi dòng là một hồ sơ."],
+    ["2. Giữ nguyên đủ 8 cột và tên tiêu đề; mỗi dòng là một hồ sơ."],
     ["3. MÃ CĂN, TÊN KHÁCH HÀNG và LOẠI HỒ SƠ là khóa đối chiếu, bắt buộc nhập."],
     ["4. Hồ sơ được đối chiếu theo đúng bộ 3: MÃ CĂN + TÊN KHÁCH HÀNG + LOẠI HỒ SƠ."],
     ["5. Nếu tìm thấy hồ sơ trùng bộ 3, các cột còn lại chỉ cập nhật khi ô Excel có dữ liệu."],
     ["6. Ô trống hoặc chỉ có khoảng trắng sẽ giữ nguyên giá trị hiện tại, không ghi đè."],
     ["7. Nếu không tìm thấy hồ sơ trùng bộ 3, hệ thống tạo hồ sơ mới; NGÀY THỰC HIỆN phải có giá trị."],
-    ["8. NHÂN VIÊN THỰC HIỆN để trống khi tạo mới sẽ dùng tài khoản đang đăng nhập."],
+    ["8. Nhân viên thực hiện tự động lấy từ tài khoản đang đăng nhập."],
     ["9. KIỂM SOÁT nếu nhập phải thuộc danh sách nhân viên có quyền kiểm soát."],
     ["10. NGÀY THỰC HIỆN, NGÀY CHUYỂN KIỂM SOÁT và NGÀY KIỂM SOÁT DUYỆT dùng DD/MM/YYYY."],
     ["11. Ngày thực hiện không được lớn hơn hôm nay. Các ngày cập nhật khác phải là ngày hợp lệ."],
@@ -275,11 +290,6 @@ function buildImportTemplate() {
   const data = workbook.addWorksheet("DATA_IMPORT");
 
   data.columns = [
-    {
-      header: "NHÂN VIÊN THỰC HIỆN",
-      key: "nhanVienThucHien",
-      width: 28,
-    },
     {
       header: "MÃ CĂN",
       key: "maCan",
@@ -352,12 +362,11 @@ function buildImportTemplate() {
     },
   ];
 
-  data.autoFilter = "A1:I1";
+  data.autoFilter = "A1:H1";
 
   // Các cột định danh dạng Text để giữ nguyên mã có số 0 ở đầu.
   data.getColumn(1).numFmt = "@";
   data.getColumn(2).numFmt = "@";
-  data.getColumn(3).numFmt = "@";
 
   const procedureTypeList =
     `"${PROCEDURE_TYPES.join(",")}"`;
@@ -367,7 +376,7 @@ function buildImportTemplate() {
     rowNumber <= MAX_IMPORT_ROWS + 1;
     rowNumber++
   ) {
-    data.getCell(`D${rowNumber}`).dataValidation = {
+    data.getCell(`C${rowNumber}`).dataValidation = {
       type: "list",
       allowBlank: false,
       formulae: [procedureTypeList],
@@ -376,7 +385,7 @@ function buildImportTemplate() {
       error: "Vui lòng chọn một loại hồ sơ trong danh sách.",
     };
 
-    ["E", "G", "I"].forEach((column) => {
+    ["D", "F", "H"].forEach((column) => {
       data.getCell(`${column}${rowNumber}`).numFmt = "dd/mm/yyyy";
     });
   }
@@ -394,7 +403,6 @@ async function findImportWorksheet(buffer) {
   await workbook.xlsx.load(buffer);
 
   const requiredHeaders = [
-    "nhan_vien_thuc_hien",
     "ma_can",
     "ten_khach_hang",
     "loai_ho_so",
@@ -419,7 +427,7 @@ async function findImportWorksheet(buffer) {
 
   if (!worksheet) {
     throw new Error(
-      "Không tìm thấy bảng dữ liệu đúng mẫu 9 cột. Hãy sử dụng sheet DATA_IMPORT."
+      "Không tìm thấy bảng dữ liệu đúng mẫu 8 cột. Hãy sử dụng sheet DATA_IMPORT."
     );
   }
 
@@ -615,9 +623,6 @@ router.post(
         const parsedNgayThucHien = excelDateValue(
           row.getCell(columns.get("ngay_thuc_hien"))
         );
-        const nhanVienThucHien = excelCellText(
-          row.getCell(columns.get("nhan_vien_thuc_hien"))
-        );
         const trangThaiHoSo = excelCellText(
           row.getCell(columns.get("trang_thai_ho_so"))
         );
@@ -779,8 +784,6 @@ router.post(
 
             loaiHoSo,
 
-            nhanVienThucHien: nhanVienThucHien.trim(),
-
             ngayThucHien: parsedNgayThucHien?.display || "",
 
             trangThaiHoSo: trangThaiHoSo.trim(),
@@ -834,7 +837,7 @@ router.post(
     // BƯỚC 6: CẬP NHẬT HỒ SƠ ĐÃ TỒN TẠI
 
     try {
-
+      const procedureUpdates = [];
       for (const item of updates) {
 
         currentRow = item.rowNumber;
@@ -847,7 +850,6 @@ router.post(
 
         let changed = false;
         const updateFields = [
-          ["nhanVienThucHien", item.data.nhanVienThucHien],
           ["ngayThucHien", item.data.ngayThucHien],
           ["trangThaiHoSo", item.data.trangThaiHoSo],
           ["ngayChuyenKiemSoat", item.data.ngayChuyenKiemSoat],
@@ -867,21 +869,22 @@ router.post(
           continue;
         }
 
-        await updateProcedureByRowIndex(
-          existing.rowIndex,
-          updated
-        );
+        procedureUpdates.push({
+          rowIndex: existing.rowIndex,
+          data: updated,
+          previousEmployeeName: existing.nhanVienThucHien,
+        });
 
         updatedCount++;
       }
+      await updateProceduresByRowIndex(procedureUpdates);
 
       // BƯỚC 7: THÊM HỒ SƠ MỚI
 
       if (additions.length > 0) {
 
         const newRecords = additions.map((item) => ({
-          // Use the provided employee when present; otherwise keep the signed-in user as owner.
-          nhanVienThucHien: item.data.nhanVienThucHien || req.user.fullName,
+          nhanVienThucHien: req.user.fullName,
 
           maCan: item.data.maCan,
 
@@ -988,17 +991,13 @@ router.get(
   requireAnyRole(CONTROL_ROLES),
   async (req, res) => {
     try {
-      const records = (await listProcedures())
+      const allRecords = await listProcedures();
+      const records = allRecords
         .filter(
           (item) =>
             canonicalText(item.kiemSoat) ===
             canonicalText(req.user.fullName)
-        )
-        .sort((left, right) => {
-          const leftDate = parseDate(left.ngayChuyenKiemSoat)?.iso || "";
-          const rightDate = parseDate(right.ngayChuyenKiemSoat)?.iso || "";
-          return rightDate.localeCompare(leftDate);
-        });
+        );
 
       const pendingCount = records.filter(
         (item) =>
@@ -1090,7 +1089,9 @@ async function reviewAssignedControlRecord(req, res, decision) {
           }),
     };
 
-    await updateProcedureByRowIndex(record.rowIndex, updated);
+    await updateProceduresByRowIndex([
+      { rowIndex: record.rowIndex, data: updated },
+    ]);
 
     return res.json({
       message:
@@ -1170,6 +1171,166 @@ router.get(
     }
   }
 );
+
+const EXPORT_FIELDS = [
+  ["stt", "STT"],
+  ["maCan", "MÃ CĂN"],
+  ["tenKhachHang", "TÊN KHÁCH HÀNG"],
+  ["loaiHoSo", "LOẠI HỒ SƠ"],
+  ["nhanVienThucHien", "NHÂN VIÊN THỰC HIỆN"],
+  ["ngayThucHien", "NGÀY THỰC HIỆN"],
+  ["trangThaiHoSo", "TRẠNG THÁI HỒ SƠ"],
+  ["kiemSoat", "NHÂN VIÊN KIỂM SOÁT"],
+  ["ngayChuyenKiemSoat", "NGÀY CHUYỂN KIỂM SOÁT"],
+  ["ngayKiemSoatDuyet", "NGÀY KIỂM SOÁT DUYỆT"],
+  ["yeuCauBoSung", "YÊU CẦU BỔ SUNG / SỬA ĐỔI"],
+];
+
+function textIncludes(value, filter) {
+  return canonicalText(value).includes(canonicalText(filter));
+}
+
+router.post("/export", async (req, res) => {
+  try {
+    const scope = String(req.body?.scope || "");
+    const view = String(req.body?.view || "");
+    const isSpecialist = SPECIALIST_ROLES.some(
+      (role) => canonicalText(role) === canonicalText(req.user.role)
+    );
+    const isController = CONTROL_ROLES.some(
+      (role) => canonicalText(role) === canonicalText(req.user.role)
+    );
+
+    if (!["account", "filtered"].includes(scope)) {
+      return res.status(400).json({ message: "Phạm vi export không hợp lệ." });
+    }
+
+    let records = await listProcedures();
+    if (scope === "account" || isSpecialist) {
+      const ownerField = isSpecialist ? "nhanVienThucHien" : "kiemSoat";
+      records = records.filter(
+        (record) =>
+          canonicalText(record[ownerField]) === canonicalText(req.user.fullName)
+      );
+    } else if (isController && view === "controlInbox") {
+      records = records.filter(
+        (record) => canonicalText(record.kiemSoat) === canonicalText(req.user.fullName)
+      );
+    } else if (!isController || !["department", "report"].includes(view)) {
+      return res.status(403).json({ message: "Bạn không có quyền export danh sách này." });
+    }
+
+    if (scope === "filtered") {
+      const selectedType = String(req.body?.selectedType || "").trim();
+      const search = String(req.body?.search || "").trim();
+      const columnFilters =
+        req.body?.columnFilters && typeof req.body.columnFilters === "object"
+          ? req.body.columnFilters
+          : {};
+      const allowedFilterKeys = new Set(EXPORT_FIELDS.map(([key]) => key));
+      const controlStatusTab = String(req.body?.controlStatusTab || "");
+      const reportEmployee = String(req.body?.reportEmployee || "").trim();
+      const reportType = String(req.body?.reportType || "").trim();
+
+      records = records.filter((record) => {
+        if (selectedType && canonicalText(record.loaiHoSo) !== canonicalText(selectedType)) {
+          return false;
+        }
+        if (
+          search &&
+          !EXPORT_FIELDS.some(([key]) => textIncludes(record[key], search))
+        ) {
+          return false;
+        }
+        if (
+          Object.entries(columnFilters).some(
+            ([key, value]) =>
+              allowedFilterKeys.has(key) &&
+              String(value || "").trim() &&
+              !textIncludes(record[key], value)
+          )
+        ) {
+          return false;
+        }
+        if (
+          reportEmployee &&
+          canonicalText(record.nhanVienThucHien) !== canonicalText(reportEmployee)
+        ) {
+          return false;
+        }
+        if (
+          reportType &&
+          canonicalText(record.loaiHoSo) !== canonicalText(reportType)
+        ) {
+          return false;
+        }
+        if (view === "controlInbox") {
+          const status = canonicalText(record.trangThaiHoSo);
+          const isPending = status === canonicalText("CHUYỂN KIỂM SOÁT");
+          const isResolved =
+            status === canonicalText("ĐÃ KIỂM SOÁT") ||
+            status === canonicalText("TRẢ THỦ TỤC");
+          if (controlStatusTab === "pending" && !isPending) return false;
+          if (controlStatusTab === "resolved" && !isResolved) return false;
+        }
+        return true;
+      });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Danh sách hồ sơ", {
+      views: [{ state: "frozen", ySplit: 1 }],
+    });
+    worksheet.columns = EXPORT_FIELDS.map(([key, header]) => ({
+      header,
+      key,
+      width: key === "yeuCauBoSung" ? 36 : key === "tenKhachHang" ? 26 : 20,
+    }));
+    worksheet.addRows(records);
+    worksheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: EXPORT_FIELDS.length },
+    };
+    worksheet.getRow(1).height = 28;
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF17365D" } };
+      cell.alignment = { vertical: "middle", wrapText: true };
+    });
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.alignment = { vertical: "top", wrapText: true };
+        if (rowNumber % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF1F6FC" },
+            };
+          });
+        }
+      }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const suffix = scope === "account" ? "Tai_Khoan" : "Theo_Bo_Loc";
+    const timestamp = new Date().toISOString().slice(0, 10);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="BCCN_${suffix}_${timestamp}.xlsx"`
+    );
+    return res.send(Buffer.from(buffer));
+  } catch (error) {
+    return res.status(500).json({
+      message: "Không thể xuất danh sách Excel.",
+      error: error.message,
+    });
+  }
+});
 
 // ==========================================
 // 13. API LỊCH SỬ HỒ SƠ THEO MÃ CĂN
@@ -1276,10 +1437,11 @@ router.post("/", requireAnyRole(SPECIALIST_ROLES), async (req, res) => {
 
     if (
       !String(maCan || "").trim() ||
+      !String(tenKhachHang || "").trim() ||
       !loaiHoSo
     ) {
       return res.status(400).json({
-        message: "maCan and loaiHoSo are required",
+        message: "maCan, tenKhachHang, and loaiHoSo are required",
       });
     }
 
@@ -1386,19 +1548,22 @@ router.put("/:stt", requireAnyRole(SPECIALIST_ROLES), async (req, res) => {
       });
     }
 
-    if (
-      Object.prototype.hasOwnProperty.call(
-        req.body,
-        "maCan"
-      ) ||
-      Object.prototype.hasOwnProperty.call(
-        req.body,
-        "tenKhachHang"
-      )
-    ) {
+    if (Object.prototype.hasOwnProperty.call(req.body, "maCan")) {
       return res.status(400).json({
-        message:
-          "maCan and tenKhachHang are locked and cannot be edited",
+        message: "maCan is locked and cannot be edited",
+      });
+    }
+
+    const tenKhachHang = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "tenKhachHang"
+    )
+      ? String(req.body.tenKhachHang || "").trim()
+      : record.tenKhachHang;
+
+    if (!tenKhachHang) {
+      return res.status(400).json({
+        message: "tenKhachHang is required",
       });
     }
 
@@ -1418,6 +1583,8 @@ router.put("/:stt", requireAnyRole(SPECIALIST_ROLES), async (req, res) => {
 
     const updated = {
       ...record,
+
+      tenKhachHang,
 
       loaiHoSo:
         req.body.loaiHoSo || record.loaiHoSo,
@@ -1446,10 +1613,9 @@ router.put("/:stt", requireAnyRole(SPECIALIST_ROLES), async (req, res) => {
       });
     }
 
-    await updateProcedureByRowIndex(
-      record.rowIndex,
-      updated
-    );
+    await updateProceduresByRowIndex([
+      { rowIndex: record.rowIndex, data: updated },
+    ]);
 
     return res.json({
       message: "Procedure updated",
@@ -1459,6 +1625,39 @@ router.put("/:stt", requireAnyRole(SPECIALIST_ROLES), async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Cannot update procedure",
+      error: error.message,
+    });
+  }
+});
+
+router.delete("/:stt", requireAnyRole(SPECIALIST_ROLES), async (req, res) => {
+  try {
+    const record = await findProcedureByStt(req.params.stt);
+    if (!record) {
+      return res.status(404).json({
+        message: "Record not found",
+      });
+    }
+
+    if (!canManageRecord(req.user, record)) {
+      return res.status(403).json({
+        message: "You cannot delete this record",
+      });
+    }
+
+    const deleted = await deleteProcedureByStt(record.stt);
+    if (!deleted) {
+      return res.status(404).json({
+        message: "Record not found",
+      });
+    }
+    return res.json({
+      message: "Đã xóa hồ sơ",
+      stt: record.stt,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Không thể xóa hồ sơ",
       error: error.message,
     });
   }
@@ -1540,22 +1739,16 @@ router.post(
     const ngayChuyenKiemSoat =
       parseDate(todayIsoDate()).display;
 
-    for (const item of selected) {
-      const updated = {
+    const updates = selected.map((item) => ({
+      rowIndex: item.rowIndex,
+      data: {
         ...item,
-
         trangThaiHoSo: "CHUYỂN KIỂM SOÁT",
-
         ngayChuyenKiemSoat,
-
         kiemSoat: selectedControl.fullName,
-      };
-
-      await updateProcedureByRowIndex(
-        item.rowIndex,
-        updated
-      );
-    }
+      },
+    }));
+    await updateProceduresByRowIndex(updates);
 
     return res.json({
       message: "Transferred to control successfully",
