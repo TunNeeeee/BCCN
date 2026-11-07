@@ -24,6 +24,18 @@ const userAvatarInitials = document.getElementById("userAvatarInitials");
 const userAvatarImage = document.getElementById("userAvatarImage");
 const userChip = document.getElementById("userChip");
 const profilePage = document.getElementById("profilePage");
+const directorLayout = document.getElementById("directorLayout");
+const directorSidebar = document.getElementById("directorSidebar");
+const employeeManagementPage = document.getElementById("employeeManagementPage");
+const employeeTableBody = document.getElementById("employeeTableBody");
+const employeeManagementMessage = document.getElementById("employeeManagementMessage");
+const employeeTemporaryCredential = document.getElementById("employeeTemporaryCredential");
+const employeeTemporaryPassword = document.getElementById("employeeTemporaryPassword");
+const employeeDialog = document.getElementById("employeeDialog");
+const employeeForm = document.getElementById("employeeForm");
+const employeeFormMessage = document.getElementById("employeeFormMessage");
+const temporaryCredential = document.getElementById("temporaryCredential");
+const temporaryPassword = document.getElementById("temporaryPassword");
 const profileMessage = document.getElementById("profileMessage");
 const profileAvatarInput = document.getElementById("profileAvatarInput");
 const profileAvatarButton = document.getElementById("profileAvatarButton");
@@ -55,6 +67,14 @@ const reportPanel = document.getElementById("reportPanel");
 const reportEmployeeSelect = document.getElementById("reportEmployeeSelect");
 const reportTypeSelect = document.getElementById("reportTypeSelect");
 const reportResult = document.getElementById("reportResult");
+const reportDashboard = document.getElementById("reportDashboard");
+const reportSummaryGrid = document.getElementById("reportSummaryGrid");
+const reportTypeColumns = document.getElementById("reportTypeColumns");
+const reportStatusColumns = document.getElementById("reportStatusColumns");
+const reportEmployeeBars = document.getElementById("reportEmployeeBars");
+const reportDashboardMessage = document.getElementById("reportDashboardMessage");
+const procedureScrollRow = document.getElementById("procedureScrollRow");
+const employeeScrollRow = document.getElementById("employeeScrollRow");
 const pendingControlTab = document.getElementById("pendingControlTab");
 const resolvedControlTab = document.getElementById("resolvedControlTab");
 const pendingControlCount = document.getElementById("pendingControlCount");
@@ -91,8 +111,10 @@ let visibleRecords = [];
 let procedureTypes = [];
 let selectedType = "";
 let isControlDashboard = false;
+let isDirectorDashboard = false;
 let currentMode = "personal";
 let departmentRecords = [];
+let employeeAccounts = [];
 let controlNotificationTimer = null;
 const pageSize = 10;
 let currentPage = 1;
@@ -101,6 +123,7 @@ let reviewTarget = null;
 const selectedRecordStts = new Set();
 let pendingAvatarDataUrl = "";
 const MAX_AVATAR_DATA_URL_LENGTH = 40000;
+let refreshTableScrollbars = () => {};
 const DATE_FILTER_FIELDS = new Set([
   "ngayThucHien",
   "ngayChuyenKiemSoat",
@@ -179,15 +202,21 @@ function displayDate(value) {
 
 function isSpecialistRole(user) {
   const role = canonicalText(user?.role);
-  return role === canonicalText("admin") || role === canonicalText("chuyen vien thu tuc");
+  return isDirectorRole(user) ||
+    role === canonicalText("admin") ||
+    role === canonicalText("chuyen vien thu tuc");
 }
 
 function isControlRole(user) {
   const role = canonicalText(user?.role);
-  return [
+  return isDirectorRole(user) || role === canonicalText("admin") || [
     canonicalText("Kiem Soat"),
     canonicalText("Chuyen Vien Kiem Soat"),
   ].includes(role);
+}
+
+function isDirectorRole(user) {
+  return canonicalText(user?.role) === canonicalText("Giam Doc");
 }
 
 async function apiFetch(url, options = {}) {
@@ -224,9 +253,19 @@ async function apiFetch(url, options = {}) {
 
 async function downloadProcedureExport(scope) {
   const button = scope === "account" ? exportAccountBtn : exportFilteredBtn;
+  const isReport = currentMode === "report";
+  const statusTarget = isReport ? reportDashboardMessage : listMessageEl;
+  const setStatus = (text, ok) => {
+    if (isReport) {
+      statusTarget.textContent = text;
+      statusTarget.classList.toggle("ok", ok);
+      statusTarget.classList.toggle("err", !ok);
+    } else {
+      setMessage(statusTarget, text, ok);
+    }
+  };
   button.disabled = true;
-  setMessage(
-    listMessageEl,
+  setStatus(
     scope === "account" ? "Đang xuất hồ sơ tài khoản..." : "Đang xuất danh sách theo bộ lọc...",
     true
   );
@@ -268,9 +307,9 @@ async function downloadProcedureExport(scope) {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage(listMessageEl, "Đã tải file Excel thành công.", true);
+    setStatus("Đã tải file Excel thành công.", true);
   } catch (error) {
-    setMessage(listMessageEl, error.message || "Không thể xuất danh sách Excel", false);
+    setStatus(error.message || "Không thể xuất danh sách Excel", false);
   } finally {
     button.disabled = false;
   }
@@ -371,7 +410,12 @@ async function compressAvatar(file) {
 }
 
 async function openProfilePage() {
+  directorLayout.classList.add("hidden");
+  clearEmployeeTemporaryPassword();
   document.querySelector(".report-card").classList.add("hidden");
+  employeeManagementPage.classList.add("hidden");
+  employeeManagementPage.dataset.active = "false";
+  clearEmployeeTemporaryPassword();
   profilePage.classList.remove("hidden");
   setMessage(profileMessage, "Đang tải thông tin cá nhân...", true);
   try {
@@ -384,7 +428,14 @@ async function openProfilePage() {
 
 function closeProfilePage() {
   profilePage.classList.add("hidden");
-  document.querySelector(".report-card").classList.remove("hidden");
+  directorLayout.classList.remove("hidden");
+  if (isDirectorDashboard && employeeManagementPage.dataset.active === "true") {
+    employeeManagementPage.classList.remove("hidden");
+    document.querySelector(".report-card").classList.add("hidden");
+  } else {
+    employeeManagementPage.classList.add("hidden");
+    document.querySelector(".report-card").classList.remove("hidden");
+  }
   profileAvatarInput.value = "";
   pendingAvatarDataUrl = "";
   uploadAvatarBtn.disabled = true;
@@ -527,13 +578,19 @@ function renderTable(records) {
   procedureTable.classList.toggle("control-table", controlView);
   procedureTable.classList.toggle("personal-view", currentMode === "personal");
   procedureTable.classList.toggle("control-inbox-view", currentMode === "controlInbox");
+  const canEditRecords = currentMode === "personal" ||
+    (isDirectorDashboard && currentMode !== "controlInbox");
   const selectableRecords = records.filter(canTransferToControl);
   document.getElementById("selectHeaderCell").classList.toggle(
     "hidden",
     controlView || selectableRecords.length === 0
   );
   document.getElementById("actionHeader").textContent =
-    currentMode === "controlInbox" ? "Xử lý" : currentMode === "personal" ? "Thao tác" : "";
+    currentMode === "controlInbox"
+      ? "Xử lý"
+      : canEditRecords
+        ? "Thao tác"
+        : "";
 
   if (!records.length) {
     const row = document.createElement("tr");
@@ -624,7 +681,7 @@ function renderTable(records) {
       returnButton.dataset.return = record.stt;
       returnButton.textContent = "Trả hồ sơ";
       actionCell.append(approveButton, returnButton);
-    } else if (currentMode === "personal") {
+    } else if (canEditRecords) {
       const editButton = document.createElement("button");
       editButton.type = "button";
       editButton.className = "edit-btn";
@@ -699,6 +756,209 @@ function filteredRecords(includeType = true) {
   });
 }
 
+function setReportDashboardVisible(isVisible) {
+  reportDashboard.classList.toggle("hidden", !isVisible);
+  [
+    document.querySelector(".filter-toolbar"),
+    procedureScrollRow,
+    document.querySelector(".table-wrap"),
+    pagination,
+    document.querySelector(".table-footer"),
+    listMessageEl,
+  ].forEach((element) => element.classList.toggle("hidden", isVisible));
+}
+
+function countReportValues(records, getLabel) {
+  const counts = new Map();
+  records.forEach((record) => {
+    const label = getLabel(record);
+    counts.set(label, (counts.get(label) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, "vi"));
+}
+
+function renderReportColumns(container, entries) {
+  container.replaceChildren();
+  const maximum = Math.max(1, ...entries.map((entry) => entry.count));
+
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "report-chart-empty";
+    empty.textContent = "Chưa có dữ liệu";
+    container.appendChild(empty);
+    return;
+  }
+
+  entries.forEach(({ label, count }) => {
+    const column = document.createElement("div");
+    column.className = "report-column";
+    column.title = `${label}: ${count}`;
+
+    const value = document.createElement("strong");
+    value.className = "report-column-value";
+    value.textContent = String(count);
+
+    const track = document.createElement("div");
+    track.className = "report-column-track";
+    const fill = document.createElement("span");
+    fill.className = "report-column-fill";
+    fill.style.height = `${Math.max(5, (count / maximum) * 100)}%`;
+    track.appendChild(fill);
+
+    const caption = document.createElement("span");
+    caption.className = "report-column-label";
+    caption.textContent = label;
+
+    column.append(value, track, caption);
+    container.appendChild(column);
+  });
+}
+
+function renderReportEmployeeBars(entries) {
+  reportEmployeeBars.replaceChildren();
+  const maximum = Math.max(1, ...entries.map((entry) => entry.count));
+  const visibleEntries = entries.slice(0, 8);
+
+  if (!visibleEntries.length) {
+    const empty = document.createElement("p");
+    empty.className = "report-chart-empty";
+    empty.textContent = "Chưa có dữ liệu";
+    reportEmployeeBars.appendChild(empty);
+    return;
+  }
+
+  visibleEntries.forEach(({ label, count }) => {
+    const row = document.createElement("div");
+    row.className = "report-bar-row";
+
+    const name = document.createElement("span");
+    name.className = "report-bar-label";
+    name.textContent = label;
+    name.title = label;
+
+    const track = document.createElement("span");
+    track.className = "report-bar-track";
+    const fill = document.createElement("span");
+    fill.className = "report-bar-fill";
+    fill.style.width = `${Math.max(4, (count / maximum) * 100)}%`;
+    track.appendChild(fill);
+
+    const value = document.createElement("strong");
+    value.className = "report-bar-value";
+    value.textContent = String(count);
+
+    row.append(name, track, value);
+    reportEmployeeBars.appendChild(row);
+  });
+
+  if (entries.length > visibleEntries.length) {
+    const more = document.createElement("p");
+    more.className = "report-chart-more";
+    more.textContent = `Còn ${entries.length - visibleEntries.length} nhân viên`;
+    reportEmployeeBars.appendChild(more);
+  }
+}
+
+function renderReportDashboard(records) {
+  const pendingCount = records.filter(
+    (record) => canonicalText(record.trangThaiHoSo) === canonicalText("CHUYỂN KIỂM SOÁT")
+  ).length;
+  const approvedCount = records.filter(
+    (record) => canonicalText(record.trangThaiHoSo) === canonicalText("ĐÃ KIỂM SOÁT")
+  ).length;
+  const returnedCount = records.filter(
+    (record) => canonicalText(record.trangThaiHoSo) === canonicalText("TRẢ THỦ TỤC")
+  ).length;
+
+  const metrics = [
+    ["Tổng hồ sơ", records.length, "Trong phạm vi đã chọn", "total"],
+    ["Chờ kiểm soát", pendingCount, "Đang chờ xử lý", "pending"],
+    ["Đã kiểm soát", approvedCount, "Đã được duyệt", "approved"],
+    ["Trả thủ tục", returnedCount, "Cần bổ sung hoặc sửa", "returned"],
+  ];
+  reportSummaryGrid.replaceChildren();
+  metrics.forEach(([label, value, description, variant]) => {
+    const card = document.createElement("article");
+    card.className = `report-metric-card ${variant}`;
+
+    const title = document.createElement("span");
+    title.className = "report-metric-label";
+    title.textContent = label;
+
+    const number = document.createElement("strong");
+    number.className = "report-metric-value";
+    number.textContent = String(value);
+
+    const note = document.createElement("span");
+    note.className = "report-metric-note";
+    note.textContent = description;
+
+    card.append(title, number, note);
+    reportSummaryGrid.appendChild(card);
+  });
+
+  const typeEntries = countReportValues(
+    records,
+    (record) => String(record.loaiHoSo || "").trim() || "Chưa phân loại"
+  );
+  const statusEntries = countReportValues(records, (record) => {
+    const status = String(record.trangThaiHoSo || "").trim();
+    if (!status) return "Mới tạo";
+    if (canonicalText(status) === canonicalText("CHUYỂN KIỂM SOÁT")) return "Chờ kiểm soát";
+    if (canonicalText(status) === canonicalText("ĐÃ KIỂM SOÁT")) return "Đã kiểm soát";
+    if (canonicalText(status) === canonicalText("TRẢ THỦ TỤC")) return "Trả thủ tục";
+    return status;
+  });
+  const employeeEntries = countReportValues(
+    records,
+    (record) => String(record.nhanVienThucHien || "").trim() || "Chưa phân công"
+  );
+
+  renderReportColumns(reportTypeColumns, typeEntries);
+  renderReportColumns(reportStatusColumns, statusEntries);
+  renderReportEmployeeBars(employeeEntries);
+}
+
+function connectTopScrollbar(row, scrollbar, viewport, table) {
+  const content = scrollbar.querySelector(".table-top-scroll-content");
+  const update = () => {
+    const hiddenParent = viewport.closest(".hidden");
+    const canScroll = !hiddenParent && viewport.clientWidth > 0 &&
+      table.scrollWidth > viewport.clientWidth + 1;
+    row.classList.toggle("hidden", !canScroll);
+
+    const contentWidth = Math.max(
+      scrollbar.clientWidth,
+      table.scrollWidth + scrollbar.clientWidth - viewport.clientWidth
+    );
+    content.style.width = `${contentWidth}px`;
+    if (scrollbar.scrollLeft !== viewport.scrollLeft) {
+      scrollbar.scrollLeft = viewport.scrollLeft;
+    }
+  };
+
+  scrollbar.addEventListener("scroll", () => {
+    if (viewport.scrollLeft !== scrollbar.scrollLeft) {
+      viewport.scrollLeft = scrollbar.scrollLeft;
+    }
+  });
+  viewport.addEventListener("scroll", () => {
+    if (scrollbar.scrollLeft !== viewport.scrollLeft) {
+      scrollbar.scrollLeft = viewport.scrollLeft;
+    }
+  });
+
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    observer.observe(scrollbar);
+    observer.observe(table);
+  }
+  return update;
+}
+
 function applyFilters(resetPage = true) {
   populateColumnFilterOptions();
   if (resetPage) {
@@ -721,6 +981,7 @@ function applyFilters(resetPage = true) {
   nextPageBtn.disabled = currentPage >= totalPages;
   renderTabs();
   renderTable(pageRecords);
+  requestAnimationFrame(refreshTableScrollbars);
   setMessage(listMessageEl, `Đang hiển thị ${visibleRecords.length} hồ sơ`, true);
 }
 
@@ -737,8 +998,21 @@ async function loadControlUsers() {
 
 async function loadMyProcedures() {
   const data = await apiFetch("/procedures/my", { method: "GET" });
+  setReportDashboardVisible(false);
+  employeeManagementPage.classList.add("hidden");
+  employeeManagementPage.dataset.active = "false";
+  clearEmployeeTemporaryPassword();
+  document.querySelector(".report-card").classList.remove("hidden");
   currentMode = "personal";
   allRecords = data.records || [];
+  document.getElementById("directorControlStatusTabs").classList.add("hidden");
+  updateTransferToolsVisibility();
+  if (isDirectorDashboard) {
+    setActiveDirectorNav("personal");
+    document.querySelector(".context-copy h1").textContent = "Hồ sơ của tôi";
+    document.querySelector(".context-copy > p").firstChild.textContent = "Hồ sơ của ";
+    document.querySelector(".scope-badge").textContent = "Phạm vi dữ liệu cá nhân";
+  }
   const availableRecords = new Map(
     allRecords.map((record) => [String(record.stt), record])
   );
@@ -753,8 +1027,15 @@ async function loadMyProcedures() {
 
 async function loadControlInbox() {
   const data = await apiFetch("/procedures/control/inbox", { method: "GET" });
+  setReportDashboardVisible(false);
   currentMode = "controlInbox";
   allRecords = data.records || [];
+  document.getElementById("directorControlStatusTabs").classList.toggle(
+    "hidden",
+    !isDirectorDashboard
+  );
+  updateTransferToolsVisibility();
+  document.getElementById("directorPendingCount").textContent = String(data.pendingCount || 0);
   pendingControlCount.textContent = String(data.pendingCount || 0);
   pendingControlCount.setAttribute("aria-label", `${data.pendingCount || 0} hồ sơ chờ kiểm soát`);
   const resolvedCount = allRecords.filter((record) => {
@@ -772,6 +1053,10 @@ async function loadControlNotificationCount() {
   pendingControlCount.textContent = String(data.pendingCount || 0);
   pendingControlCount.setAttribute("aria-label", `${data.pendingCount || 0} hồ sơ chờ kiểm soát`);
   resolvedControlCount.textContent = String(data.resolvedCount || 0);
+  if (isDirectorDashboard) {
+    document.getElementById("directorPendingCount").textContent = String(data.pendingCount || 0);
+    return;
+  }
   if (Number(data.pendingCount || 0) !== previousCount) {
     await loadControlInbox();
   }
@@ -801,18 +1086,36 @@ function fillReportOptions() {
   reportTypeSelect.value = types.includes(previousType) ? previousType : "";
 }
 
+function updateTransferToolsVisibility() {
+  document.getElementById("transferTools").classList.toggle(
+    "hidden",
+    isControlDashboard || (isDirectorDashboard && currentMode !== "personal")
+  );
+}
+
 async function showDepartmentList() {
   if (!departmentRecords.length) {
     await loadDepartmentRecords();
   }
+  employeeManagementPage.classList.add("hidden");
+  setReportDashboardVisible(false);
+  employeeManagementPage.dataset.active = "false";
+  document.querySelector(".report-card").classList.remove("hidden");
   currentMode = "department";
   allRecords = departmentRecords;
+  document.getElementById("directorControlStatusTabs").classList.add("hidden");
+  updateTransferToolsVisibility();
   selectedType = "";
   searchInput.value = "";
   document.getElementById("controlStatusTabs").classList.add("hidden");
   document.getElementById("filterCaption").textContent = "Lọc danh sách phòng ban";
   reportPanel.classList.add("hidden");
   setActiveControlNav(departmentListBtn);
+  if (isDirectorDashboard) {
+    setActiveDirectorNav("department");
+    document.querySelector(".context-copy h1").textContent = "Toàn bộ hồ sơ phòng ban";
+    document.querySelector(".context-copy > p").firstChild.textContent = "Đang xem toàn bộ dữ liệu · ";
+  }
   applyFilters();
 }
 
@@ -828,13 +1131,22 @@ async function generateDepartmentReport() {
   const data = await apiFetch(`/procedures/department/report?${params.toString()}`, { method: "GET" });
   currentMode = "report";
   allRecords = data.records || [];
+  setReportDashboardVisible(true);
+  document.getElementById("directorControlStatusTabs").classList.add("hidden");
+  updateTransferToolsVisibility();
+  employeeManagementPage.classList.add("hidden");
+  employeeManagementPage.dataset.active = "false";
+  document.querySelector(".report-card").classList.remove("hidden");
   selectedType = "";
   searchInput.value = "";
   document.getElementById("controlStatusTabs").classList.add("hidden");
-  reportResult.textContent =
-    `Tìm thấy ${data.total || 0} hồ sơ phù hợp với tiêu chí báo cáo.`;
-  document.getElementById("filterCaption").textContent = "Kết quả báo cáo";
-  applyFilters();
+  reportResult.textContent = `Thống kê ${data.total || 0} hồ sơ theo bộ lọc đã chọn.`;
+  reportDashboardMessage.classList.remove("ok", "err");
+  reportDashboardMessage.textContent = data.total
+    ? "Số liệu được tổng hợp từ các hồ sơ phù hợp với bộ lọc."
+    : "Không có hồ sơ phù hợp với bộ lọc hiện tại.";
+  totalCountEl.textContent = String(data.total || 0);
+  renderReportDashboard(allRecords);
 }
 
 function setActiveControlNav(activeButton) {
@@ -843,10 +1155,199 @@ function setActiveControlNav(activeButton) {
   });
 }
 
+function setActiveDirectorNav(view) {
+  directorSidebar.querySelectorAll("[data-director-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.directorView === view);
+  });
+}
+
+function showEmployeeTemporaryPassword(password) {
+  employeeTemporaryPassword.textContent = password;
+  employeeTemporaryCredential.classList.remove("hidden");
+}
+
+function clearEmployeeTemporaryPassword() {
+  employeeTemporaryCredential.classList.add("hidden");
+  employeeTemporaryPassword.textContent = "";
+}
+
+async function loadEmployeeAccounts() {
+  const data = await apiFetch("/auth/users", { method: "GET" });
+  employeeAccounts = data.users || [];
+  document.getElementById("employeeCount").textContent = String(employeeAccounts.length);
+  employeeTableBody.replaceChildren();
+
+  employeeAccounts.forEach((user) => {
+    const row = document.createElement("tr");
+    const employeeCell = document.createElement("td");
+    employeeCell.className = "employee-identity-cell";
+    const name = document.createElement("strong");
+    name.textContent = user.fullName;
+    const position = document.createElement("span");
+    position.textContent = user.position;
+    employeeCell.append(name, position);
+
+    [employeeCell, user.position, user.username].forEach((value, index) => {
+      if (index === 0) {
+        row.appendChild(value);
+        return;
+      }
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.appendChild(cell);
+    });
+
+    const roleCell = document.createElement("td");
+    const roleBadge = document.createElement("span");
+    roleBadge.className = `employee-role-badge ${isDirectorRole(user) ? "director" : ""}`;
+    roleBadge.textContent = isDirectorRole(user)
+      ? "Giám Đốc"
+      : canonicalText(user.role) === canonicalText("Kiem Soat")
+        ? "Chuyên viên kiểm soát"
+        : canonicalText(user.role) === canonicalText("Admin")
+          ? "Quản trị viên"
+          : "Chuyên viên thủ tục";
+    roleCell.appendChild(roleBadge);
+    row.appendChild(roleCell);
+
+    const actions = document.createElement("td");
+    actions.className = "employee-actions";
+    const isCurrentUser = String(user.stt) === String(currentUser?.stt);
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "employee-action-btn";
+    editButton.dataset.editUser = user.stt;
+    editButton.textContent = "Sửa";
+    editButton.disabled = isCurrentUser;
+    editButton.title = isCurrentUser ? "Không thể sửa chính tài khoản đang đăng nhập" : "Sửa thông tin";
+    const resetButton = document.createElement("button");
+    resetButton.type = "button";
+    resetButton.className = "employee-action-btn";
+    resetButton.dataset.resetUser = user.stt;
+    resetButton.textContent = "Đặt lại mật khẩu";
+    resetButton.disabled = isCurrentUser;
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "employee-action-btn danger";
+    deleteButton.dataset.deleteUser = user.stt;
+    deleteButton.textContent = "Xóa";
+    deleteButton.disabled = isCurrentUser;
+    actions.append(editButton, resetButton, deleteButton);
+    row.appendChild(actions);
+    employeeTableBody.appendChild(row);
+  });
+  refreshTableScrollbars();
+  requestAnimationFrame(refreshTableScrollbars);
+}
+
+function openEmployeeDialog(user = null) {
+  employeeForm.reset();
+  employeeFormMessage.textContent = "";
+  temporaryCredential.classList.add("hidden");
+  temporaryPassword.textContent = "";
+  document.getElementById("employeeStt").value = user?.stt || "";
+  document.getElementById("employeeDialogTitle").textContent =
+    user ? "Chỉnh sửa tài khoản nhân viên" : "Tạo tài khoản nhân viên";
+  document.getElementById("saveEmployeeBtn").textContent =
+    user ? "Lưu thay đổi" : "Tạo tài khoản";
+  document.getElementById("employeeFullName").value = user?.fullName || "";
+  document.getElementById("employeePosition").value = user?.position || "";
+  document.getElementById("employeeUsername").value = user?.username || "";
+  document.getElementById("employeeRole").value = user?.role || "Chuyen Vien Thu Tuc";
+  document.getElementById("employeeUsername").disabled = false;
+  document.getElementById("employeeRole").disabled = false;
+  employeeDialog.showModal();
+}
+
+async function showDirectorReports() {
+  employeeManagementPage.classList.add("hidden");
+  employeeManagementPage.dataset.active = "false";
+  clearEmployeeTemporaryPassword();
+  document.querySelector(".report-card").classList.remove("hidden");
+  reportPanel.classList.remove("hidden");
+  setReportDashboardVisible(true);
+  document.getElementById("controlStatusTabs").classList.add("hidden");
+  reportResult.textContent = "Đang tổng hợp số liệu...";
+  setActiveDirectorNav("reports");
+  try {
+    if (!departmentRecords.length) {
+      await loadDepartmentRecords();
+    }
+    currentMode = "report";
+    document.getElementById("directorControlStatusTabs").classList.add("hidden");
+    selectedType = "";
+    searchInput.value = "";
+    updateTransferToolsVisibility();
+    document.getElementById("controlStatusTabs").classList.add("hidden");
+    await generateDepartmentReport();
+  } catch (error) {
+    reportResult.textContent = error.message || "Không thể tải dữ liệu báo cáo";
+    setReportDashboardVisible(true);
+  }
+}
+
+async function showEmployeeManagement() {
+  setReportDashboardVisible(false);
+  document.querySelector(".report-card").classList.add("hidden");
+  employeeManagementPage.classList.remove("hidden");
+  employeeManagementPage.dataset.active = "true";
+  currentMode = "employees";
+  document.getElementById("directorControlStatusTabs").classList.add("hidden");
+  setActiveDirectorNav("employees");
+  setMessage(employeeManagementMessage, "Đang tải tài khoản nhân viên...", true);
+  try {
+    await loadEmployeeAccounts();
+    setMessage(employeeManagementMessage, "", true);
+  } catch (error) {
+    setMessage(
+      employeeManagementMessage,
+      error.message || "Không thể tải tài khoản nhân viên",
+      false
+    );
+  }
+}
+
+async function reloadCurrentRecords() {
+  if (currentMode === "personal") {
+    await loadMyProcedures();
+    return;
+  }
+  if (currentMode === "controlInbox") {
+    await loadControlInbox();
+    return;
+  }
+
+  departmentRecords = [];
+  await loadDepartmentRecords();
+  if (currentMode === "report") {
+    await generateDepartmentReport();
+  } else {
+    await showDepartmentList();
+  }
+}
+
 function setControlStatusTab(statusTab) {
   controlStatusTab = statusTab;
   pendingControlTab.classList.toggle("active", statusTab === "pending");
   resolvedControlTab.classList.toggle("active", statusTab === "resolved");
+  document.getElementById("directorPendingStatusBtn").classList.toggle(
+    "active",
+    statusTab === "pending"
+  );
+  document.getElementById("directorResolvedStatusBtn").classList.toggle(
+    "active",
+    statusTab === "resolved"
+  );
+  document.getElementById("directorControlStatusTabs").classList.toggle(
+    "hidden",
+    !isDirectorDashboard || currentMode !== "controlInbox"
+  );
+  if (isDirectorDashboard && currentMode === "controlInbox") {
+    document.querySelector(".context-copy > p").firstChild.textContent =
+      statusTab === "pending"
+        ? "Đang xem hồ sơ chờ xử lý · "
+        : "Đang xem hồ sơ đã xử lý · ";
+  }
   document.getElementById("controlStatusTabs").classList.toggle(
     "hidden",
     currentMode !== "controlInbox"
@@ -1042,12 +1543,24 @@ async function initDashboard() {
   currentUser = user;
   applyProfileUser(user);
   document.querySelector(".report-card").classList.remove("hidden");
+  employeeManagementPage.classList.add("hidden");
+  employeeManagementPage.dataset.active = "false";
+  directorLayout.classList.remove("hidden");
+  directorSidebar.classList.add("hidden");
   profilePage.classList.add("hidden");
-  isControlDashboard = isControlRole(user);
+  isDirectorDashboard =
+    isDirectorRole(user) || canonicalText(user.role) === canonicalText("admin");
+  isControlDashboard = isControlRole(user) && !isDirectorDashboard;
+  directorLayout.classList.toggle("director-dashboard", isDirectorDashboard);
+  directorSidebar.classList.toggle("hidden", !isDirectorDashboard);
+  directorSidebar.querySelector(".director-sidebar-footer span:last-child").textContent =
+    isDirectorRole(user)
+      ? "Đăng nhập với quyền Giám Đốc"
+      : "Đăng nhập với quyền Quản trị viên";
   selectedRecordStts.clear();
   selectAll.checked = false;
   selectAll.indeterminate = false;
-  if (!isSpecialistRole(user) && !isControlDashboard) {
+  if (!isSpecialistRole(user) && !isControlRole(user)) {
     setMessage(messageEl, "Tài khoản không có quyền truy cập hệ thống", false);
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
@@ -1060,24 +1573,48 @@ async function initDashboard() {
   selectedType = "";
   departmentRecords = [];
   document.querySelector(".brand-title").textContent =
-    isControlDashboard ? "KIỂM SOÁT HỒ SƠ" : "BÁO CÁO CÁ NHÂN";
+    isDirectorDashboard
+      ? isDirectorRole(user)
+        ? "BẢNG ĐIỀU HÀNH GIÁM ĐỐC"
+        : "QUẢN TRỊ HỆ THỐNG"
+      : isControlDashboard
+        ? "KIỂM SOÁT HỒ SƠ"
+        : "BÁO CÁO CÁ NHÂN";
   document.querySelector(".brand-sub").textContent =
-    isControlDashboard
+    isDirectorDashboard
+      ? isDirectorRole(user)
+        ? "Quản lý hồ sơ, nhân sự và hoạt động toàn hệ thống"
+        : "Quản lý hồ sơ, nhân sự và quyền truy cập hệ thống"
+      : isControlDashboard
       ? "Tiếp nhận, duyệt và theo dõi hồ sơ được giao kiểm soát"
       : "Theo dõi tiến độ và quản lý hồ sơ thủ tục cá nhân";
   staffNameEl.textContent = displayName;
   roleBadge.textContent = user.role || "Chuyên viên thủ tục";
   document.querySelector(".scope-badge").textContent =
-    isControlDashboard ? "Phạm vi hồ sơ được giao" : "Phạm vi dữ liệu cá nhân";
+    isDirectorDashboard
+      ? isDirectorRole(user)
+        ? "Phạm vi điều hành toàn hệ thống"
+        : "Quyền quản trị hệ thống"
+      : isControlDashboard
+        ? "Phạm vi hồ sơ được giao"
+        : "Phạm vi dữ liệu cá nhân";
   document.querySelector(".context-copy h1").textContent =
-    isControlDashboard ? "Hồ sơ được giao kiểm soát" : "Danh sách hồ sơ cá nhân";
+    isDirectorDashboard
+      ? "Toàn bộ hồ sơ phòng ban"
+      : isControlDashboard
+        ? "Hồ sơ được giao kiểm soát"
+        : "Danh sách hồ sơ cá nhân";
   document.querySelector(".context-copy > p").firstChild.textContent =
-    isControlDashboard ? "Chuyên viên kiểm soát: " : "Hồ sơ của ";
+    isDirectorDashboard
+      ? "Đang xem toàn bộ dữ liệu · "
+      : isControlDashboard
+        ? "Chuyên viên kiểm soát: "
+        : "Hồ sơ của ";
   nhanVienInput.value = displayName;
-  openCreateBtn.classList.toggle("hidden", isControlDashboard);
-  importBtn.classList.toggle("hidden", isControlDashboard);
+  openCreateBtn.classList.toggle("hidden", !isSpecialistRole(user));
+  importBtn.classList.toggle("hidden", !isSpecialistRole(user));
   controlNav.classList.toggle("hidden", !isControlDashboard);
-  document.getElementById("transferTools").classList.toggle("hidden", isControlDashboard);
+  updateTransferToolsVisibility();
   reportPanel.classList.add("hidden");
 
   ngayThucHienInput.max = getTodayDate();
@@ -1091,7 +1628,23 @@ async function initDashboard() {
     controlNotificationTimer = null;
   }
 
-  if (isControlDashboard) {
+  if (isDirectorDashboard) {
+    currentMode = "department";
+    controlStatusTab = "pending";
+    setActiveDirectorNav("department");
+    await Promise.all([
+      loadProcedureTypes(),
+      loadControlUsers(),
+      loadDepartmentRecords(),
+    ]);
+    await showDepartmentList();
+    await loadControlNotificationCount();
+    controlNotificationTimer = setInterval(() => {
+      loadControlNotificationCount().catch((error) => {
+        setMessage(listMessageEl, error.message || "Không thể làm mới thông báo", false);
+      });
+    }, 30000);
+  } else if (isControlDashboard) {
     currentMode = "controlInbox";
     controlStatusTab = "pending";
     setActiveControlNav(controlInboxBtn);
@@ -1134,6 +1687,179 @@ loginForm.addEventListener("submit", async (event) => {
 
 userChip.addEventListener("click", openProfilePage);
 document.getElementById("backToDashboardBtn").addEventListener("click", closeProfilePage);
+
+directorSidebar.addEventListener("click", (event) => {
+  const statusButton = event.target.closest("[data-director-status]");
+  if (statusButton) {
+    setControlStatusTab(statusButton.dataset.directorStatus);
+    return;
+  }
+  const button = event.target.closest("[data-director-view]");
+  if (!button) {
+    return;
+  }
+  const view = button.dataset.directorView;
+  if (view === "department") {
+    showDepartmentList().catch((error) => {
+      setMessage(listMessageEl, error.message || "Không thể tải danh sách phòng ban", false);
+    });
+  } else if (view === "personal") {
+    reportPanel.classList.add("hidden");
+    selectedType = "";
+    searchInput.value = "";
+    loadMyProcedures().catch((error) => {
+      setMessage(listMessageEl, error.message || "Không thể tải hồ sơ cá nhân", false);
+    });
+  } else if (view === "control") {
+    controlInboxBtn.click();
+    setControlStatusTab("pending");
+  } else if (view === "reports") {
+    showDirectorReports();
+  } else if (view === "employees") {
+    showEmployeeManagement();
+  }
+});
+
+document.getElementById("createEmployeeBtn").addEventListener("click", () => {
+  openEmployeeDialog();
+});
+
+document.getElementById("closeEmployeeDialogBtn").addEventListener("click", () => {
+  employeeDialog.close();
+});
+
+document.getElementById("cancelEmployeeBtn").addEventListener("click", () => {
+  employeeDialog.close();
+});
+
+employeeDialog.addEventListener("close", () => {
+  temporaryCredential.classList.add("hidden");
+  temporaryPassword.textContent = "";
+  employeeForm.reset();
+});
+
+employeeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const stt = document.getElementById("employeeStt").value;
+  const payload = {
+    fullName: document.getElementById("employeeFullName").value.trim(),
+    position: document.getElementById("employeePosition").value.trim(),
+    username: document.getElementById("employeeUsername").value.trim(),
+    role: document.getElementById("employeeRole").value,
+  };
+  const saveButton = document.getElementById("saveEmployeeBtn");
+  saveButton.disabled = true;
+  setMessage(employeeFormMessage, stt ? "Đang cập nhật tài khoản..." : "Đang tạo tài khoản...", true);
+  let data;
+  try {
+    data = await apiFetch(
+      stt ? `/auth/users/${encodeURIComponent(stt)}` : "/auth/users",
+      {
+        method: stt ? "PUT" : "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+    if (data.temporaryPassword) {
+      temporaryCredential.classList.remove("hidden");
+      temporaryPassword.textContent = data.temporaryPassword;
+      saveButton.disabled = true;
+      setMessage(employeeFormMessage, data.message, true);
+    } else {
+      setMessage(employeeFormMessage, data.message || "Đã cập nhật tài khoản", true);
+      setTimeout(() => employeeDialog.close(), 250);
+    }
+  } catch (error) {
+    setMessage(employeeFormMessage, error.message || "Không thể lưu tài khoản", false);
+    saveButton.disabled = false;
+    return;
+  }
+  try {
+    await loadEmployeeAccounts();
+  } catch (error) {
+    setMessage(
+      employeeManagementMessage,
+      error.message || "Tài khoản đã lưu nhưng không thể tải lại danh sách",
+      false
+    );
+  }
+});
+
+document.getElementById("copyTemporaryPasswordBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(temporaryPassword.textContent);
+    setMessage(employeeFormMessage, "Đã sao chép mật khẩu tạm thời", true);
+  } catch (error) {
+    setMessage(employeeFormMessage, error.message || "Không thể sao chép mật khẩu", false);
+  }
+});
+
+employeeTableBody.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) {
+    return;
+  }
+  const stt = button.dataset.editUser || button.dataset.resetUser || button.dataset.deleteUser;
+  const user = employeeAccounts.find((account) => String(account.stt) === String(stt));
+  if (!user) {
+    return;
+  }
+
+  if (button.dataset.editUser) {
+    openEmployeeDialog(user);
+    return;
+  }
+  if (button.dataset.resetUser) {
+    if (!window.confirm(`Đặt lại mật khẩu cho tài khoản ${user.username}?`)) {
+      return;
+    }
+    button.disabled = true;
+    try {
+      const data = await apiFetch(
+        `/auth/users/${encodeURIComponent(user.stt)}/reset-password`,
+        { method: "POST", body: JSON.stringify({}) }
+      );
+      showEmployeeTemporaryPassword(data.temporaryPassword);
+      setMessage(employeeManagementMessage, data.message, true);
+    } catch (error) {
+      setMessage(employeeManagementMessage, error.message || "Không thể đặt lại mật khẩu", false);
+    } finally {
+      button.disabled = false;
+    }
+    return;
+  }
+  if (button.dataset.deleteUser) {
+    if (!window.confirm(`Xóa tài khoản ${user.username} (${user.fullName})?`)) {
+      return;
+    }
+    button.disabled = true;
+    try {
+      const data = await apiFetch(`/auth/users/${encodeURIComponent(user.stt)}`, {
+        method: "DELETE",
+      });
+      employeeTemporaryCredential.classList.add("hidden");
+      employeeTemporaryPassword.textContent = "";
+      await loadEmployeeAccounts();
+      setMessage(employeeManagementMessage, data.message || "Đã xóa tài khoản", true);
+    } catch (error) {
+      setMessage(employeeManagementMessage, error.message || "Không thể xóa tài khoản", false);
+      button.disabled = false;
+    }
+  }
+});
+
+document.getElementById("copyEmployeeTemporaryPasswordBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(employeeTemporaryPassword.textContent);
+    setMessage(employeeManagementMessage, "Đã sao chép mật khẩu tạm thời", true);
+  } catch (error) {
+    setMessage(employeeManagementMessage, error.message || "Không thể sao chép mật khẩu", false);
+  }
+});
+
+document.getElementById("dismissEmployeeTemporaryPasswordBtn").addEventListener("click", () => {
+  employeeTemporaryCredential.classList.add("hidden");
+  employeeTemporaryPassword.textContent = "";
+});
 
 profileAvatarButton.addEventListener("click", () => {
   if (!profileAvatarImage.src) {
@@ -1299,7 +2025,7 @@ createForm.addEventListener("submit", async (event) => {
     ngayThucHienInput.value = getTodayDate();
     validateCreateForm();
     createDialog.close();
-    await loadMyProcedures();
+    await reloadCurrentRecords();
   } catch (error) {
     setMessage(createMessageEl, error.message || "Tạo hồ sơ thất bại", false);
   }
@@ -1403,7 +2129,10 @@ procedureTableBody.addEventListener("click", (event) => {
   const record = allRecords.find(
     (item) => String(item.stt) === String(button.dataset.edit)
   );
-  if (record && currentMode === "personal") {
+  if (
+    record &&
+    (currentMode === "personal" || (isDirectorDashboard && currentMode !== "controlInbox"))
+  ) {
     openEditDialog(record);
   }
 });
@@ -1429,7 +2158,7 @@ async function deleteProcedure(record) {
   });
   selectedRecordStts.delete(String(record.stt));
   setMessage(listMessageEl, data.message || "Đã xóa hồ sơ", true);
-  await loadMyProcedures();
+  await reloadCurrentRecords();
 }
 
 editForm.addEventListener("submit", async (event) => {
@@ -1451,7 +2180,7 @@ editForm.addEventListener("submit", async (event) => {
     });
 
     setMessage(editMessageEl, data.message || "Cập nhật thành công", true);
-    await loadMyProcedures();
+    await reloadCurrentRecords();
     setTimeout(() => {
       editDialog.close();
     }, 250);
@@ -1524,7 +2253,19 @@ transferBtn.addEventListener("click", async () => {
 
 refreshBtn.addEventListener("click", async () => {
   try {
-    if (isControlDashboard) {
+    if (isDirectorDashboard) {
+      await Promise.all([loadProcedureTypes(), loadControlUsers()]);
+      if (currentMode === "employees") {
+        await loadEmployeeAccounts();
+      } else if (currentMode === "department" || currentMode === "report") {
+        await reloadCurrentRecords();
+      } else if (currentMode === "controlInbox") {
+        await loadControlInbox();
+      } else {
+        await loadMyProcedures();
+      }
+      await loadControlNotificationCount();
+    } else if (isControlDashboard) {
       await loadProcedureTypes();
       if (currentMode === "department" || currentMode === "report") {
         departmentRecords = [];
@@ -1568,17 +2309,27 @@ logoutBtn.addEventListener("click", async () => {
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     selectedRecordStts.clear();
+    clearEmployeeTemporaryPassword();
     setViewLoggedIn(false);
     setMessage(messageEl, "Đã đăng xuất", true);
   }
 });
 
 controlInboxBtn.addEventListener("click", async () => {
+  employeeManagementPage.classList.add("hidden");
+  employeeManagementPage.dataset.active = "false";
+  clearEmployeeTemporaryPassword();
+  document.querySelector(".report-card").classList.remove("hidden");
   reportPanel.classList.add("hidden");
   selectedType = "";
   searchInput.value = "";
   controlStatusTab = "pending";
   setActiveControlNav(controlInboxBtn);
+  if (isDirectorDashboard) {
+    setActiveDirectorNav("control");
+    document.querySelector(".context-copy h1").textContent = "Hộp thư kiểm soát";
+    document.querySelector(".context-copy > p").firstChild.textContent = "Đang xem hồ sơ chờ xử lý · ";
+  }
   try {
     await loadControlInbox();
     setControlStatusTab("pending");
@@ -1594,9 +2345,15 @@ departmentListBtn.addEventListener("click", () => {
 });
 
 document.getElementById("reportToggleBtn").addEventListener("click", async () => {
+  if (isDirectorDashboard) {
+    await showDirectorReports();
+    return;
+  }
   const opening = reportPanel.classList.contains("hidden");
   reportPanel.classList.toggle("hidden", !opening);
   if (!opening) {
+    setReportDashboardVisible(false);
+    controlInboxBtn.click();
     return;
   }
 
@@ -1607,19 +2364,18 @@ document.getElementById("reportToggleBtn").addEventListener("click", async () =>
       await loadDepartmentRecords();
     }
     currentMode = "report";
-    allRecords = [];
     selectedType = "";
     searchInput.value = "";
-    document.getElementById("filterCaption").textContent = "Kết quả báo cáo";
-    applyFilters();
+    setReportDashboardVisible(true);
+    await generateDepartmentReport();
   } catch (error) {
-    setMessage(listMessageEl, error.message || "Không thể tải dữ liệu báo cáo", false);
+    reportResult.textContent = error.message || "Không thể tải dữ liệu báo cáo";
   }
 });
 
 document.getElementById("generateReportBtn").addEventListener("click", () => {
   generateDepartmentReport().catch((error) => {
-    setMessage(listMessageEl, error.message || "Không thể tạo báo cáo", false);
+    reportResult.textContent = error.message || "Không thể tạo báo cáo";
   });
 });
 
@@ -1716,7 +2472,7 @@ importForm.addEventListener("submit", async (event) => {
     });
 
     setMessage(importMessage, data.message, true);
-    await loadMyProcedures();
+    await reloadCurrentRecords();
     importForm.reset();
   } catch (error) {
     setMessage(importMessage, error.message || "Import Excel thất bại", false);
@@ -1734,7 +2490,28 @@ importForm.addEventListener("submit", async (event) => {
   }
 });
 
-initDashboard().catch((error) => {
+const refreshProcedureScrollbar = connectTopScrollbar(
+  procedureScrollRow,
+  document.getElementById("procedureTopScroll"),
+  document.querySelector(".table-wrap"),
+  document.getElementById("procedureTable")
+);
+const refreshEmployeeScrollbar = connectTopScrollbar(
+  employeeScrollRow,
+  document.getElementById("employeeTopScroll"),
+  document.querySelector(".employee-table-wrap"),
+  document.querySelector(".employee-table")
+);
+refreshTableScrollbars = () => {
+  refreshProcedureScrollbar();
+  refreshEmployeeScrollbar();
+};
+window.addEventListener("resize", refreshTableScrollbars);
+refreshTableScrollbars();
+
+initDashboard().then(() => {
+  refreshTableScrollbars();
+}).catch((error) => {
   setViewLoggedIn(false);
   setMessage(messageEl, error.message || "Khởi tạo giao diện thất bại", false);
 });

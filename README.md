@@ -25,6 +25,12 @@ Roles currently supported:
 - Kiem Soat
 - Chuyen Vien Thu Tuc
 
+`Giam Doc` has specialist and controller permissions, access to all procedure
+records and reports, and employee account management. Existing trusted `Admin`
+accounts can also manage accounts to bootstrap the first director. If neither
+role exists yet, promote the first trusted account by setting its column F role
+to `Giam Doc` in the user sheet before signing in.
+
 ### Sheet DATA_MASTER
 
 - A: STT
@@ -176,9 +182,35 @@ bcrypt hashes.
 
 Response returns a temporary password.
 
-### Register (optional admin use)
+### Employee account management
+
+The `Giam Doc` and legacy `Admin` roles can use these authenticated endpoints:
+
+- `GET /auth/users` lists employee accounts without password hashes.
+- `POST /auth/users` creates an account with `fullName`, `position`, `username`,
+  and role (`Chuyen Vien Thu Tuc`, `Kiem Soat`, or `Giam Doc`). The server
+  generates a temporary password, stores only its bcrypt hash, and returns the
+  temporary password once.
+- `PUT /auth/users/:stt` updates another employee's information and role.
+- `POST /auth/users/:stt/reset-password` generates and returns a one-time
+  temporary password.
+- `DELETE /auth/users/:stt` clears the employee's user-sheet row without
+  shifting other account row indexes. The signed-in account and last director
+  cannot be deleted or demoted.
+
+The dashboard provides a responsive director sidebar for personal and
+department procedure lists, the control inbox, reports, and employee accounts.
+Reports show aggregate case counts and charts by procedure type, status, and
+employee instead of repeating the full case list. Wide procedure and employee
+tables include an additional horizontal scrollbar above the table.
+Authenticated requests reload the account's current role from the user sheet so
+role changes and account removals take effect immediately.
+
+### Register
 
 `POST /auth/register`
+
+Requires an authenticated `Giam Doc` or `Admin` account.
 
 ```json
 {
@@ -204,8 +236,9 @@ Returns the names of users whose role is `Kiem Soat` (also accepts
 ### Control specialist workflow
 
 Users with the `Kiem Soat` or `Chuyên viên Kiểm soát` role land on their
-assigned-procedure inbox. It lists every record assigned to the signed-in
-controller, sorted by `NGÀY THỰC HIỆN` descending, and opens on
+assigned-procedure inbox. Directors and legacy Admins can view and process all
+control records. The inbox lists the available records sorted by
+`NGÀY THỰC HIỆN` descending and opens on
 the `Chưa xử lý` tab. `Đã xử lý` contains approved and returned records. Both
 tabs show at most 10 records per page, and the pending/resolved counts refresh
 every 30 seconds.
@@ -217,18 +250,21 @@ every 30 seconds.
 - `POST /procedures/control/:stt/return` sets its status to `TRẢ THỦ TỤC` and
   saves the optional `yeuCauBoSung` text.
 
-Only the controller assigned to a pending record can approve or return it.
-Both decisions require confirmation in the dashboard before they are saved.
+Only the assigned controller, a director, or a legacy Admin can approve or
+return a pending record. Both decisions require confirmation in the dashboard
+before they are saved.
 
 ### Department list and report
 
-Control specialists can view the full shared sheet using
+Control specialists and directors can view the full shared sheet using
 `GET /procedures/department`. `GET /procedures/department/report` accepts
 optional `employee` and `procedureType` query parameters and returns the
 matching records and count. The dashboard provides employee and procedure
 dropdowns for generating this report. Personal, control, and department lists
 are sorted by `NGÀY THỰC HIỆN` descending and paginated in groups of 10. The
 dashboard hides the STT column while retaining STT internally for record actions.
+The director sidebar provides employee account management and combined
+specialist/controller access.
 
 ### Apartment history
 

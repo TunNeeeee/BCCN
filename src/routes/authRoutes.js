@@ -5,12 +5,16 @@ const crypto = require("crypto");
 const env = require("../config/env");
 const {
   findUserByUsername,
+  findUserByStt,
+  listUserAccounts,
   createUser,
+  updateUserByRowIndex,
+  clearUserByRowIndex,
   updatePasswordByRowIndex,
   updateAvatarByRowIndex,
   findAvatarByRowIndex,
 } = require("../repositories/userRepository");
-const { requireAuth } = require("../middleware/authMiddleware");
+const { requireAuth, requireAnyRole } = require("../middleware/authMiddleware");
 const { addToken, hasToken, removeToken } = require("../services/tokenStore");
 
 const router = express.Router();
@@ -18,6 +22,41 @@ const PASSWORD_SALT_ROUNDS = 10;
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_BYTES = 72;
 const MAX_AVATAR_DATA_URL_LENGTH = 40000;
+const MANAGED_ROLES = [
+  { value: "Chuyen Vien Thu Tuc", label: "Chuyên viên thủ tục" },
+  { value: "Kiem Soat", label: "Chuyên viên kiểm soát" },
+  { value: "Giam Doc", label: "Giám Đốc" },
+];
+const ACCOUNT_MANAGER_ROLES = ["Giam Doc", "Admin"];
+
+function canonicalRole(value) {
+  return String(value || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function getManagedRole(value) {
+  return MANAGED_ROLES.find((role) => canonicalRole(role.value) === canonicalRole(value));
+}
+
+function getManagedUser(user) {
+  return {
+    stt: user.stt,
+    fullName: user.fullName.trim(),
+    position: user.position.trim(),
+    username: user.username,
+    role: user.role,
+    rowIndex: user.rowIndex,
+  };
+}
+
+function isDirector(user) {
+  return canonicalRole(user?.role) === canonicalRole("Giam Doc");
+}
 
 function createAccessToken(user) {
   return jwt.sign(
@@ -113,12 +152,194 @@ function isValidAvatarDataUrl(avatar) {
   );
 }
 
-router.post("/register", async (req, res) => {
+router.get("/users", requireAuth, requireAnyRole(ACCOUNT_MANAGER_ROLES), async (_req, res) => {
   try {
-    const { fullName, position, username, password, role } = req.body;
+    const users = await listUserAccounts();
+    return res.json({ users: users.map(getManagedUser) });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Cannot load employee accounts",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/users", requireAuth, requireAnyRole(ACCOUNT_MANAGER_ROLES), async (req, res) => {
+  try {
+    const fullName = String(req.body?.fullName || "").trim();
+    const position = String(req.body?.position || "").trim();
+    const username = String(req.body?.username || "").trim().toLowerCase();
+    const selectedRole = getManagedRole(req.body?.role);
+    if (!fullName || fullName.length > 200 || !position || position.length > 100) {
+      return res.status(400).json({
+        message: "Full name (max 200) and position (max 100) are required",
+      });
+    }
+    if (!/^[a-zA-Z0-9._-]{3,50}$/.test(username)) {
+      return res.status(400).json({
+        message: "Username must be 3-50 characters using letters, numbers, dot, underscore or hyphen",
+      });
+    }
+    if (!selectedRole) {
+      return res.status(400).json({ message: "Select a valid employee role" });
+    }
+    if (await findUserByUsername(username)) {
+      return res.status(409).json({ message: "Username already exists" });
+    }
+
+    const temporaryPassword = crypto.randomBytes(12).toString("hex");
+    const hashedPassword = await bcrypt.hash(temporaryPassword, PASSWORD_SALT_ROUNDS);
+    const user = await createUser({
+      fullName,
+      position,
+      username,
+      password: hashedPassword,
+      role: selectedRole.value,
+    });
+
+    return res.status(201).json({
+      message: "Employee account created. Share the temporary password securely.",
+      user: getManagedUser(user),
+      temporaryPassword,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Cannot create employee account",
+      error: error.message,
+    });
+  }
+});
+
+router.put("/users/:stt", requireAuth, requireAnyRole(ACCOUNT_MANAGER_ROLES), async (req, res) => {
+  try {
+    const user = await findUserByStt(req.params.stt);
+    if (!user) {
+      return res.status(404).json({ message: "Employee account not found" });
+    }
+    if (user.stt === req.user.stt) {
+      return res.status(400).json({
+        message: "Use the personal profile page to update your own information",
+      });
+    }
+
+    const fullName = String(req.body?.fullName || "").trim();
+    const position = String(req.body?.position || "").trim();
+    const username = String(req.body?.username || "").trim().toLowerCase();
+    const selectedRole = getManagedRole(req.body?.role);
+    if (!fullName || fullName.length > 200 || !position || position.length > 100) {
+      return res.status(400).json({
+        message: "Full name (max 200) and position (max 100) are required",
+      });
+    }
+    if (!/^[a-zA-Z0-9._-]{3,50}$/.test(username)) {
+      return res.status(400).json({
+        message: "Username must be 3-50 characters using letters, numbers, dot, underscore or hyphen",
+      });
+    }
+    if (!selectedRole) {
+      return res.status(400).json({ message: "Select a valid employee role" });
+    }
+    const conflictingUser = await findUserByUsername(username);
+    if (conflictingUser && conflictingUser.stt !== user.stt) {
+      return res.status(409).json({ message: "Username already exists" });
+    }
+    if (
+      isDirector(user) &&
+      !isDirector({ role: selectedRole.value }) &&
+      (await listUserAccounts()).filter(isDirector).length <= 1
+    ) {
+      return res.status(409).json({ message: "At least one director account must remain" });
+    }
+
+    await updateUserByRowIndex(user.rowIndex, {
+      fullName,
+      position,
+      username,
+      role: selectedRole.value,
+    });
+    return res.json({
+      message: "Employee account updated",
+      user: {
+        ...getManagedUser(user),
+        fullName,
+        position,
+        username,
+        role: selectedRole.value,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Cannot update employee account",
+      error: error.message,
+    });
+  }
+});
+
+router.post(
+  "/users/:stt/reset-password",
+  requireAuth,
+  requireAnyRole(ACCOUNT_MANAGER_ROLES),
+  async (req, res) => {
+    try {
+      const user = await findUserByStt(req.params.stt);
+      if (!user) {
+        return res.status(404).json({ message: "Employee account not found" });
+      }
+      if (user.stt === req.user.stt) {
+        return res.status(400).json({
+          message: "Use the personal profile page to change your own password",
+        });
+      }
+
+      const temporaryPassword = crypto.randomBytes(12).toString("hex");
+      const hashedPassword = await bcrypt.hash(temporaryPassword, PASSWORD_SALT_ROUNDS);
+      await updatePasswordByRowIndex(user.rowIndex, hashedPassword);
+      return res.json({
+        message: "Password reset. Share the temporary password securely.",
+        temporaryPassword,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        message: "Cannot reset employee password",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.delete("/users/:stt", requireAuth, requireAnyRole(ACCOUNT_MANAGER_ROLES), async (req, res) => {
+  try {
+    const user = await findUserByStt(req.params.stt);
+    if (!user) {
+      return res.status(404).json({ message: "Employee account not found" });
+    }
+    if (user.stt === req.user.stt) {
+      return res.status(400).json({ message: "You cannot delete your own account" });
+    }
+    if (isDirector(user) && (await listUserAccounts()).filter(isDirector).length <= 1) {
+      return res.status(409).json({ message: "At least one director account must remain" });
+    }
+
+    await clearUserByRowIndex(user.rowIndex);
+    return res.json({ message: "Employee account deleted" });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Cannot delete employee account",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/register", requireAuth, requireAnyRole(ACCOUNT_MANAGER_ROLES), async (req, res) => {
+  try {
+    const { fullName, position, username, password } = req.body;
+    const selectedRole = getManagedRole(req.body?.role);
 
     if (!fullName || !position || !username || !password) {
       return res.status(400).json({ message: "fullName, position, username, password are required" });
+    }
+    if (!selectedRole) {
+      return res.status(400).json({ message: "Select a valid employee role" });
     }
     const passwordValidationMessage = getPasswordValidationMessage(password);
     if (passwordValidationMessage) {
@@ -138,7 +359,7 @@ router.post("/register", async (req, res) => {
       position,
       username,
       password: finalPassword,
-      role,
+      role: selectedRole.value,
     });
 
     return res.status(201).json({

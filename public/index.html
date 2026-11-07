@@ -14,7 +14,9 @@
     <main id="loginView" class="layout">
       <section class="panel panel-left">
         <div class="login-brand">
-          <div class="brand-icon login-icon">BC</div>
+          <div class="logo-badge">
+            <img class="brand-icon login-icon" src="/images/logo.jpeg" alt="Logo" />
+          </div>
           <p class="kicker">BCCN · QUẢN LÝ HỒ SƠ</p>
           <h1>Quản lý thủ tục<br />&amp; kiểm soát hồ sơ</h1>
           <p class="lead">
@@ -49,7 +51,7 @@
     <main id="dashboardView" class="dashboard hidden">
       <header class="topbar">
         <div class="brand-box">
-          <div class="brand-icon">BF</div>
+          <img class="brand-icon brand-icon--header" src="/images/logo.jpeg" alt="Logo" />
           <div>
             <h2 class="brand-title">BÁO CÁO CÁ NHÂN</h2>
             <p class="brand-sub">Chỉ đơn thuần là báo cáo cá nhân thui</p>
@@ -77,6 +79,45 @@
         </div>
       </header>
 
+      <div id="directorLayout" class="director-layout">
+        <aside id="directorSidebar" class="director-sidebar hidden" aria-label="Điều hướng Giám đốc">
+          <div class="director-sidebar-heading">
+            <span class="director-sidebar-mark">GD</span>
+            <div>
+              <strong>ĐIỀU HÀNH</strong>
+              <span>Quản trị hệ thống</span>
+            </div>
+          </div>
+          <p class="director-sidebar-label">TỔNG QUAN</p>
+          <nav class="director-sidebar-nav">
+            <button type="button" class="director-nav-btn active" data-director-view="department">
+              <span aria-hidden="true">▦</span> Toàn bộ hồ sơ
+            </button>
+            <button type="button" class="director-nav-btn" data-director-view="personal">
+              <span aria-hidden="true">▤</span> Hồ sơ của tôi
+            </button>
+            <button type="button" class="director-nav-btn" data-director-view="control">
+              <span aria-hidden="true">✓</span> Hộp thư kiểm soát
+              <span id="directorPendingCount" class="director-nav-count">0</span>
+            </button>
+            <div id="directorControlStatusTabs" class="director-control-subnav hidden">
+              <button id="directorPendingStatusBtn" data-director-status="pending" type="button" class="active">Chưa xử lý</button>
+              <button id="directorResolvedStatusBtn" data-director-status="resolved" type="button">Đã xử lý</button>
+            </div>
+            <button type="button" class="director-nav-btn" data-director-view="reports">
+              <span aria-hidden="true">▥</span> Báo cáo
+            </button>
+            <button type="button" class="director-nav-btn" data-director-view="employees">
+              <span aria-hidden="true">♙</span> Quản lý nhân viên
+            </button>
+          </nav>
+          <div class="director-sidebar-footer">
+            <span class="director-online-dot"></span>
+            <span>Đăng nhập với quyền Giám Đốc</span>
+          </div>
+        </aside>
+
+        <div class="director-main">
       <section class="report-card">
         <div class="context-banner">
           <div class="context-copy">
@@ -135,6 +176,25 @@
           <p id="reportResult" class="report-result" aria-live="polite"></p>
         </section>
 
+        <section id="reportDashboard" class="report-dashboard hidden" aria-label="Kết quả thống kê">
+          <div id="reportSummaryGrid" class="report-summary-grid"></div>
+          <div class="report-chart-grid">
+            <section class="report-chart-card">
+              <h2>Theo loại hồ sơ</h2>
+              <div id="reportTypeColumns" class="report-column-chart"></div>
+            </section>
+            <section class="report-chart-card">
+              <h2>Theo trạng thái</h2>
+              <div id="reportStatusColumns" class="report-column-chart"></div>
+            </section>
+            <section class="report-chart-card report-employee-chart">
+              <h2>Theo nhân viên thực hiện</h2>
+              <div id="reportEmployeeBars" class="report-bar-chart"></div>
+            </section>
+          </div>
+          <p id="reportDashboardMessage" class="report-dashboard-message" aria-live="polite"></p>
+        </section>
+
         <div class="filter-toolbar">
           <div id="filterCaption" class="filter-caption">Lọc theo loại thủ tục</div>
           <div id="tabFilters" class="tabs"></div>
@@ -145,6 +205,13 @@
           <button id="resetFiltersBtn" type="button" class="btn-reset-filters">Xóa bộ lọc</button>
         </div>
 
+        <div class="table-scrollbar-row hidden" id="procedureScrollRow">
+          <span aria-hidden="true">↔</span>
+          <span class="table-scrollbar-label">Kéo để xem các cột</span>
+          <div id="procedureTopScroll" class="table-top-scroll" tabindex="0" role="region" aria-label="Cuộn ngang bảng hồ sơ">
+            <div class="table-top-scroll-content"></div>
+          </div>
+        </div>
         <div class="table-wrap">
           <table id="procedureTable">
             <thead>
@@ -194,6 +261,48 @@
         </div>
         <p id="listMessage" class="message" aria-live="polite"></p>
       </section>
+
+      <section id="employeeManagementPage" class="employee-management hidden" aria-labelledby="employeeManagementTitle">
+        <div class="employee-management-heading">
+          <div>
+            <p class="kicker">QUẢN TRỊ NHÂN SỰ</p>
+            <h1 id="employeeManagementTitle">Tài khoản nhân viên</h1>
+            <p>Tạo và quản lý thông tin, chức vụ, quyền truy cập của nhân viên.</p>
+          </div>
+          <button id="createEmployeeBtn" type="button" class="btn-primary">＋ Tạo tài khoản</button>
+        </div>
+        <div class="employee-management-summary">
+          <span class="employee-summary-icon">♙</span>
+          <div><strong id="employeeCount">0</strong><span> tài khoản đang hoạt động</span></div>
+        </div>
+        <div id="employeeTemporaryCredential" class="employee-temporary-credential hidden" aria-live="polite">
+          <div>
+            <strong>Mật khẩu tạm thời</strong>
+            <span>Chỉ hiển thị lần này. Hãy gửi cho nhân viên qua kênh riêng.</span>
+          </div>
+          <code id="employeeTemporaryPassword"></code>
+          <button id="copyEmployeeTemporaryPasswordBtn" type="button" class="btn-ghost">Sao chép</button>
+          <button id="dismissEmployeeTemporaryPasswordBtn" type="button" class="btn-icon" aria-label="Ẩn mật khẩu tạm">×</button>
+        </div>
+        <div class="table-scrollbar-row employee-scrollbar-row hidden" id="employeeScrollRow">
+          <span aria-hidden="true">↔</span>
+          <span class="table-scrollbar-label">Kéo để xem các cột</span>
+          <div id="employeeTopScroll" class="table-top-scroll" tabindex="0" role="region" aria-label="Cuộn ngang bảng nhân viên">
+            <div class="table-top-scroll-content"></div>
+          </div>
+        </div>
+        <div class="employee-table-wrap">
+          <table class="employee-table">
+            <thead>
+              <tr><th>Nhân viên</th><th>Chức vụ</th><th>Tên đăng nhập</th><th>Quyền truy cập</th><th>Thao tác</th></tr>
+            </thead>
+            <tbody id="employeeTableBody"></tbody>
+          </table>
+        </div>
+        <p id="employeeManagementMessage" class="message" aria-live="polite"></p>
+      </section>
+        </div>
+      </div>
 
       <section id="profilePage" class="profile-page hidden" aria-labelledby="profilePageTitle">
         <div class="profile-page-heading">
@@ -449,6 +558,50 @@
     <dialog id="avatarPreviewDialog" class="avatar-preview-dialog" aria-label="Xem ảnh đại diện">
       <button id="closeAvatarPreviewBtn" class="avatar-preview-close" type="button" aria-label="Đóng ảnh">×</button>
       <img id="avatarPreviewImage" alt="Ảnh đại diện phóng to" />
+    </dialog>
+
+    <dialog id="employeeDialog" class="edit-dialog">
+      <form id="employeeForm" class="card modal-form employee-form">
+        <div class="create-heading">
+          <div class="create-heading-icon" aria-hidden="true">♙</div>
+          <div>
+            <p class="kicker">QUẢN TRỊ NHÂN SỰ</p>
+            <h3 id="employeeDialogTitle">Tạo tài khoản nhân viên</h3>
+            <p class="create-description">Mật khẩu khởi tạo sẽ được tạo tự động và chỉ hiển thị một lần.</p>
+          </div>
+          <button id="closeEmployeeDialogBtn" type="button" class="edit-close-btn" aria-label="Đóng">×</button>
+        </div>
+        <div class="form-section employee-form-section">
+          <input id="employeeStt" type="hidden" />
+          <label for="employeeFullName">Họ và tên <span class="required-mark">*</span>
+            <input id="employeeFullName" maxlength="200" autocomplete="name" required />
+          </label>
+          <label for="employeePosition">Chức vụ <span class="required-mark">*</span>
+            <input id="employeePosition" maxlength="100" required />
+          </label>
+          <label for="employeeUsername">Tên đăng nhập <span class="required-mark">*</span>
+            <input id="employeeUsername" minlength="3" maxlength="50" pattern="[A-Za-z0-9._\-]+" autocomplete="username" required />
+          </label>
+          <label for="employeeRole">Quyền truy cập <span class="required-mark">*</span>
+            <select id="employeeRole" required>
+              <option value="Chuyen Vien Thu Tuc">Chuyên viên thủ tục</option>
+              <option value="Kiem Soat">Chuyên viên kiểm soát</option>
+              <option value="Giam Doc">Giám Đốc</option>
+            </select>
+          </label>
+          <div id="temporaryCredential" class="temporary-credential hidden" aria-live="polite">
+            <strong>Tài khoản đã được tạo</strong>
+            <span>Hãy gửi mật khẩu tạm này cho nhân viên qua kênh riêng. Mật khẩu sẽ không hiển thị lại.</span>
+            <code id="temporaryPassword"></code>
+            <button id="copyTemporaryPasswordBtn" type="button" class="btn-ghost">Sao chép mật khẩu</button>
+          </div>
+        </div>
+        <p id="employeeFormMessage" class="message" aria-live="polite"></p>
+        <div class="dialog-actions edit-dialog-actions">
+          <button id="cancelEmployeeBtn" type="button" class="btn-ghost">Đóng</button>
+          <button id="saveEmployeeBtn" type="submit" class="btn-primary">Tạo tài khoản</button>
+        </div>
+      </form>
     </dialog>
 
     <script src="/script.js"></script>

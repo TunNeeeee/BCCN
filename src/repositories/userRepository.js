@@ -27,15 +27,36 @@ function canonicalRole(value) {
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
     .toLowerCase()
     .replace(/\s+/g, " ");
+}
+
+async function listUserAccounts() {
+  const usersRows = await getUsersRows();
+  return usersRows
+    .map((row, index) => ({
+      ...normalizeUserRow(row),
+      rowIndex: index + 2,
+    }))
+    .filter((user) => user.username);
+}
+
+async function findUserByStt(stt) {
+  const normalizedStt = String(stt || "").trim();
+  return (await listUserAccounts()).find((user) => user.stt === normalizedStt) || null;
 }
 
 async function listUsersByRole(role) {
   const usersRows = await getUsersRows();
   const requiredRole = canonicalRole(role);
   const acceptedRoles = requiredRole === canonicalRole("Kiem Soat")
-    ? new Set([canonicalRole("Kiem Soat"), canonicalRole("Chuyên viên Kiểm soát")])
+    ? new Set([
+        canonicalRole("Kiem Soat"),
+        canonicalRole("Chuyên viên Kiểm soát"),
+        canonicalRole("Giam Doc"),
+        canonicalRole("Admin"),
+      ])
     : new Set([requiredRole]);
   const seenNames = new Set();
 
@@ -109,7 +130,30 @@ async function createUser({ fullName, position, username, password, role }) {
     username: row[3],
     password: row[4],
     role: row[5],
+    rowIndex: usersRows.length + 2,
   };
+}
+
+async function updateUserByRowIndex(rowIndex, { fullName, position, username, role }) {
+  await batchUpdateRanges([
+    {
+      range: `${env.googleUsersSheetName}!B${rowIndex}:D${rowIndex}`,
+      values: [[fullName, position, normalizeUsername(username)]],
+    },
+    {
+      range: `${env.googleUsersSheetName}!F${rowIndex}`,
+      values: [[role]],
+    },
+  ]);
+}
+
+async function clearUserByRowIndex(rowIndex) {
+  await batchUpdateRanges([
+    {
+      range: `${env.googleUsersSheetName}!A${rowIndex}:G${rowIndex}`,
+      values: [["", "", "", "", "", "", ""]],
+    },
+  ]);
 }
 
 async function updatePasswordByRowIndex(rowIndex, password) {
@@ -137,9 +181,13 @@ async function findAvatarByRowIndex(rowIndex) {
 
 module.exports = {
   findUserByUsername,
+  findUserByStt,
+  listUserAccounts,
   listUsersByRole,
   listAllUserNames,
   createUser,
+  updateUserByRowIndex,
+  clearUserByRowIndex,
   updatePasswordByRowIndex,
   updateAvatarByRowIndex,
   findAvatarByRowIndex,

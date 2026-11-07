@@ -37,16 +37,20 @@ const ALLOWED_ROLES = [
   "Chuyen Vien Thu Tuc",
   "Kiem Soat",
   "Chuyen Vien Kiem Soat",
+  "Giam Doc",
 ];
 
 const SPECIALIST_ROLES = [
   "Admin",
   "Chuyen Vien Thu Tuc",
+  "Giam Doc",
 ];
 
 const CONTROL_ROLES = [
   "Kiem Soat",
   "Chuyen Vien Kiem Soat",
+  "Giam Doc",
+  "Admin",
 ];
 
 const PROCEDURE_TYPES = [
@@ -124,6 +128,11 @@ function canonicalText(value) {
     .replace(/\s+/g, " ");
 }
 
+function hasDirectorPrivileges(user) {
+  const role = canonicalText(user?.role);
+  return role === canonicalText("Giam Doc") || role === canonicalText("Admin");
+}
+
 function isFutureDate(inputDateText) {
   const inputDate = parseDate(inputDateText);
 
@@ -153,7 +162,8 @@ function isRestrictedType(type) {
 function canManageRecord(user, record) {
   if (
     canonicalText(user.role) ===
-    canonicalText("Admin")
+      canonicalText("Admin") ||
+    canonicalText(user.role) === canonicalText("Giam Doc")
   ) {
     return true;
   }
@@ -995,6 +1005,7 @@ router.get(
       const records = allRecords
         .filter(
           (item) =>
+            hasDirectorPrivileges(req.user) ||
             canonicalText(item.kiemSoat) ===
             canonicalText(req.user.fullName)
         );
@@ -1027,6 +1038,7 @@ router.get(
       const records = await listProcedures();
       const assignedRecords = records.filter(
         (item) =>
+          hasDirectorPrivileges(req.user) ||
           canonicalText(item.kiemSoat) === canonicalText(req.user.fullName)
       );
       const pendingCount = assignedRecords.filter(
@@ -1061,6 +1073,7 @@ async function reviewAssignedControlRecord(req, res, decision) {
     }
 
     if (
+      !hasDirectorPrivileges(req.user) &&
       canonicalText(record.kiemSoat) !==
       canonicalText(req.user.fullName)
     ) {
@@ -1200,17 +1213,31 @@ router.post("/export", async (req, res) => {
     const isController = CONTROL_ROLES.some(
       (role) => canonicalText(role) === canonicalText(req.user.role)
     );
+    const isDirector = hasDirectorPrivileges(req.user);
 
     if (!["account", "filtered"].includes(scope)) {
       return res.status(400).json({ message: "Phạm vi export không hợp lệ." });
     }
 
     let records = await listProcedures();
-    if (scope === "account" || isSpecialist) {
+    if (scope === "account") {
       const ownerField = isSpecialist ? "nhanVienThucHien" : "kiemSoat";
       records = records.filter(
         (record) =>
           canonicalText(record[ownerField]) === canonicalText(req.user.fullName)
+      );
+    } else if (isDirector && ["department", "report", "controlInbox"].includes(view)) {
+      if (view === "controlInbox") {
+        records = records.filter((record) =>
+          ["CHUYỂN KIỂM SOÁT", "ĐÃ KIỂM SOÁT", "TRẢ THỦ TỤC"].some(
+            (status) => canonicalText(record.trangThaiHoSo) === canonicalText(status)
+          )
+        );
+      }
+    } else if (isSpecialist) {
+      records = records.filter(
+        (record) =>
+          canonicalText(record.nhanVienThucHien) === canonicalText(req.user.fullName)
       );
     } else if (isController && view === "controlInbox") {
       records = records.filter(
